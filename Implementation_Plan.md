@@ -29,6 +29,9 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
   3. Set up ESLint and Prettier with appropriate rules
   4. Create project directory structure
   5. Configure build process for single-file output
+  6. Set up Jest and Playwright for testing
+  7. Configure husky for pre-commit hooks to run tests
+  8. Initialize Git repository with initial commit
   - **Guiding Notes**: Use Vite for bundling, configure for ES5-compatible output, ensure UMD/IIFE format
 
 #### Task 1.2: Core Types & Interfaces
@@ -226,13 +229,28 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
   4. Prepare final build with minification
   - **Guiding Notes**: Documentation should be clear and concise, include examples where helpful, ensure build process produces optimized output
 
+## Development Workflow & Quality Assurance
+
+### Git Commit Strategy
+- Commits should be made after completion of each task in the Implementation Plan
+- Each commit should include a descriptive message referencing the completed task
+- Code should be reviewed before committing to ensure quality and adherence to requirements
+
+### Testing Strategy
+- Each task should include appropriate tests to verify functionality
+- Testing frameworks: Jest for unit tests, Playwright for end-to-end tests
+- Tests should be run before each commit using husky pre-commit hooks
+- Test coverage should be maintained throughout development
+
 ## Dependencies & Constraints
 
-- **Technical Stack**: TypeScript, Vite, ESLint, Prettier, yarn
+- **Technical Stack**: TypeScript, Vite, ESLint, Prettier, yarn, Jest, Playwright
 - **Browser Support**: Recent browsers only
 - **Deployment**: Single-file JS with self-injecting CSS
 - **Offline Operation**: No network dependencies
 - **Package Management**: yarn
+- **Version Control**: Git with regular commits after task completion
+- **Quality Assurance**: Automated testing to prevent regression errors
 
 ## Memory Bank Note
 
