@@ -5,6 +5,7 @@
 **BackChannel** is a lightweight JavaScript plugin for capturing and reviewing feedback on static web content, particularly designed for offline or air-gapped environments in military settings. It supports feedback workflows across single and multi-page document sets.
 
 ### Key Features
+
 - **Capture Mode**: Allows document consumers/reviewers to select content and submit feedback
 - **Review Mode**: Enables document authors to load and manage feedback via CSV packages
 - **Offline Operation**: Fully functional without network connectivity
@@ -21,6 +22,7 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
 **Objective**: Establish the project foundation, build process, and core architecture.
 
 #### Task 1.1: Project Scaffolding
+
 - **Description**: Set up the initial project structure with TypeScript, Vite, ESLint, and Prettier
 - **Assigned to**: Setup Specialist
 - **Action Steps**:
@@ -36,6 +38,7 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
 - **Guiding Notes**: Use Vite for bundling, configure for ES5-compatible output, ensure UMD/IIFE format
 
 #### Task 1.2: Core Types & Interfaces
+
 - **Description**: Define the TypeScript interfaces and types for the application
 - **Assigned to**: Setup Specialist
 - **Action Steps**:
@@ -45,12 +48,13 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
   - **Guiding Notes**: Focus on type safety and comprehensive documentation of interfaces
 
 #### Task 1.3: Storage Service Implementation
+
 - **Description**: Create the IndexedDB wrapper for data persistence
 - **Assigned to**: Setup Specialist
 - **Action Steps**:
   1. Implement IndexedDB initialization and connection management
   2. Create CRUD operations for feedback packages and comments
-  3. Implement localStorage caching for performance
+  3. Implement localStorage caching for current feedback package URL and database name (to allow quick access of database when opening a new page in the existing document set)
   4. Create utility that seeds JSON data into IndexedDB for testing, according to `docs/project/pre-populate-database.md`
   5. Add error handling and fallbacks
   - **Guiding Notes**: Use IndexedDB for primary storage, localStorage for caching, implement version checking
@@ -60,6 +64,7 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
 **Objective**: Implement the basic feedback capture functionality.
 
 #### Task 2.1: Plugin Initialization & Icon
+
 - **Description**: Create the entry point and BC icon functionality, included seeding database
 - **Assigned to**: UI Developer
 - **Action Steps**:
@@ -73,6 +78,7 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
   - **Guiding Notes**: Icon should be positioned top-right, use SVG for icon, handle window resize events
 
 #### Task 2.2: Feedback Package Creation
+
 - **Description**: Implement the dialog for creating a new feedback package
 - **Assigned to**: UI Developer
 - **Action Steps**:
@@ -84,18 +90,20 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
   - **Guiding Notes**: Modal should be accessible, form should validate inputs, provide clear feedback on success/failure
 
 #### Task 2.3: Capture Sidebar
+
 - **Description**: Implement the sidebar for managing feedback capture
 - **Assigned to**: UI Developer
 - **Action Steps**:
   1. Create sidebar UI with toggle functionality
   2. Implement "Capture Feedback" and "Export" buttons
-  3. On "Capture Feedback", sidebar hidden, allowing reviewer to select element of content. Once clicked, sidebar returns.  A `Cancel selection` button is shown to top-right.
-  3. Add comment list display in sidebar
-  4. Implement sidebar state persistence
-  5. Update e2e tests to verify sidebar functionality, and that seeded database comments are displayed
+  3. On "Capture Feedback", sidebar hidden, allowing reviewer to select element of content. Once clicked, sidebar returns. A `Cancel selection` button is shown to top-right.
+  4. Add comment list display in sidebar
+  5. Implement sidebar state persistence
+  6. Update e2e tests to verify sidebar functionality, and that seeded database comments are displayed
   - **Guiding Notes**: Sidebar should be collapsible, use CSS transitions for smooth animations, persist state in localStorage
 
 #### Task 2.4: Element Selection & Highlighting
+
 - **Description**: Implement the functionality to select and highlight elements for feedback
 - **Assigned to**: UI Developer
 - **Action Steps**:
@@ -106,6 +114,7 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
   - **Guiding Notes**: Use event delegation for performance, generate unique selectors for elements, handle edge cases like nested elements
 
 #### Task 2.5: Comment Creation UI
+
 - **Description**: Create the UI for adding comments to selected elements
 - **Assigned to**: UI Developer
 - **Action Steps**:
@@ -120,6 +129,7 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
 **Objective**: Implement data persistence and cross-page navigation features.
 
 #### Task 3.1: Comment Persistence
+
 - **Description**: Ensure comments persist across page reloads
 - **Assigned to**: Backend Developer
 - **Action Steps**:
@@ -130,6 +140,7 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
   - **Guiding Notes**: Use efficient querying patterns, implement caching where appropriate, handle edge cases like deleted elements
 
 #### Task 3.2: Cross-Page Navigation
+
 - **Description**: Implement support for comments across multiple pages
 - **Assigned to**: Backend Developer
 - **Action Steps**:
@@ -140,6 +151,7 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
   - **Guiding Notes**: Store page URLs with comments, use URL normalization to handle variations, consider relative vs absolute paths
 
 #### Task 3.3: CSV Export
+
 - **Description**: Implement the CSV export functionality
 - **Assigned to**: Backend Developer
 - **Action Steps**:
@@ -154,6 +166,7 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
 **Objective**: Implement the review mode functionality for document authors.
 
 #### Task 4.1: Review Mode Initialization
+
 - **Description**: Implement the switch to review mode and its initialization
 - **Assigned to**: Full Stack Developer
 - **Action Steps**:
@@ -164,6 +177,7 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
   - **Guiding Notes**: Mode should be persisted in localStorage, provide clear visual distinction between modes
 
 #### Task 4.2: CSV Import
+
 - **Description**: Implement the functionality to import feedback from CSV
 - **Assigned to**: Full Stack Developer
 - **Action Steps**:
@@ -174,6 +188,7 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
   - **Guiding Notes**: Handle malformed CSV gracefully, provide clear feedback on import success/failure, validate CSV structure
 
 #### Task 4.3: Comment Linking & Navigation
+
 - **Description**: Implement linking between comments and DOM elements in review mode
 - **Assigned to**: Full Stack Developer
 - **Action Steps**:
@@ -184,6 +199,7 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
   - **Guiding Notes**: Generate fallback display for missing elements, optimize element lookup performance
 
 #### Task 4.4: Resolution Management
+
 - **Description**: Implement functionality to mark comments as resolved/reopened
 - **Assigned to**: Full Stack Developer
 - **Action Steps**:
@@ -198,6 +214,7 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
 **Objective**: Refine the UI, handle edge cases, and ensure quality across browsers.
 
 #### Task 5.1: UI Polish
+
 - **Description**: Improve the visual design and usability of the plugin
 - **Assigned to**: QA Specialist
 - **Action Steps**:
@@ -208,6 +225,7 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
   - **Guiding Notes**: Focus on accessibility, ensure consistent styling across browsers, optimize for readability
 
 #### Task 5.2: Error Handling & Edge Cases
+
 - **Description**: Implement comprehensive error handling and edge case management
 - **Assigned to**: QA Specialist
 - **Action Steps**:
@@ -218,6 +236,7 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
   - **Guiding Notes**: Provide user-friendly error messages, implement fallbacks where possible, log detailed errors for debugging
 
 #### Task 5.3: Cross-Browser Testing
+
 - **Description**: Test and ensure compatibility across recent browsers
 - **Assigned to**: QA Specialist
 - **Action Steps**:
@@ -228,6 +247,7 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
   - **Guiding Notes**: Focus on recent browser versions as specified, test both online and offline scenarios
 
 #### Task 5.4: Documentation & Packaging
+
 - **Description**: Create user documentation and prepare for distribution
 - **Assigned to**: QA Specialist
 - **Action Steps**:
@@ -240,11 +260,13 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
 ## Development Workflow & Quality Assurance
 
 ### Git Commit Strategy
+
 - Commits should be made after completion of each task in the Implementation Plan
 - Each commit should include a descriptive message referencing the completed task
 - Code should be reviewed before committing to ensure quality and adherence to requirements
 
 ### Testing Strategy
+
 - Each task should include appropriate tests to verify functionality
 - Testing frameworks: Jest for unit tests, Playwright for end-to-end tests
 - Tests should be run before each commit using husky pre-commit hooks
