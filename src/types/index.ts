@@ -3,6 +3,24 @@
  */
 
 /**
+ * Represents a complete feedback package containing document metadata and comments
+ */
+export interface FeedbackPackage {
+  /** Unique identifier for the feedback package */
+  id: string
+  /** Metadata about the document being reviewed */
+  metadata: DocumentMetadata
+  /** Collection of comments in the feedback package */
+  comments: ReviewComment[]
+  /** Time the package was created */
+  createdAt: number
+  /** Last time the package was modified */
+  updatedAt: number
+  /** Version of the package format */
+  version: string
+}
+
+/**
  * Represents the state of a feedback comment in review mode
  */
 export enum CommentState {
