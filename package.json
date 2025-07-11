@@ -7,6 +7,12 @@
   "author": "Ian Mayo <ian@planetmayo.com>",
   "license": "MIT",
   "private": true,
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "prettier --write",
+      "eslint"
+    ]
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
