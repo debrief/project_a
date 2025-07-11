@@ -52,6 +52,8 @@ export interface DocumentMetadata {
   documentTitle: string
   /** Root URL for the document set (shared URL prefix) */
   documentRootUrl: string
+  /** Version of the document */
+  documentVersion?: string
 }
 
 /**

@@ -22,15 +22,15 @@ interface DBConnection {
  */
 export class DatabaseService {
   private dbName: string
-  private feedbackPackage: FeedbackPackage
+  private feedbackPackage?: FeedbackPackage
   private connectionPool: Map<string, DBConnection> = new Map()
 
   /**
    * Creates a new DatabaseService instance
    * @param dbName - Name of the IndexedDB database
-   * @param feedbackPackage - The single feedback package for this database
+   * @param feedbackPackage - The single feedback package for this database (optional when opening existing database)
    */
-  constructor(dbName: string, feedbackPackage: FeedbackPackage) {
+  constructor(dbName: string, feedbackPackage?: FeedbackPackage) {
     this.dbName = dbName
     this.feedbackPackage = feedbackPackage
   }
@@ -98,14 +98,23 @@ export class DatabaseService {
   }
 
   /**
-   * Initializes the database with the feedback package if it doesn't exist
+   * Initializes the feedback package in the database if it doesn't exist
+   * @returns Promise resolving when initialization is complete
    */
   private async initializeFeedbackPackage(): Promise<void> {
     try {
       const existingPackage = await this.getFeedbackPackage()
 
-      if (!existingPackage) {
+      if (existingPackage) {
+        // If we're opening an existing database, store the feedback package
+        if (!this.feedbackPackage) {
+          this.feedbackPackage = existingPackage
+        }
+      } else if (this.feedbackPackage) {
+        // Only try to initialize if we have a feedback package to store
         await this.updateFeedbackPackage(this.feedbackPackage)
+      } else {
+        throw new Error('No feedback package provided and none exists in the database')
       }
     } catch (error) {
       console.error('Failed to initialize feedback package:', error)
@@ -145,8 +154,8 @@ export class DatabaseService {
   }
 
   /**
-   * Updates the feedback package in the database
-   * @param feedbackPackage - The updated feedback package
+   * Updates the feedback package
+   * @param feedbackPackage - The feedback package to update
    * @returns Promise resolving when the update is complete
    */
   async updateFeedbackPackage(feedbackPackage: FeedbackPackage): Promise<void> {
@@ -163,6 +172,8 @@ export class DatabaseService {
         const request = store.put(feedbackPackage)
 
         request.onsuccess = () => {
+          // Update our local reference to the feedback package
+          this.feedbackPackage = feedbackPackage
           resolve()
         }
 

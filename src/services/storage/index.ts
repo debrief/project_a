@@ -18,24 +18,34 @@ export class StorageService {
   private cacheService: CacheService
   private seedService: SeedDataService
   private dbName: string
-  private feedbackPackageUrl: string
+  private feedbackPackageUrl?: string
 
   /**
    * Creates a new StorageService instance
-   * @param feedbackPackage - The feedback package for this database
+   * @param feedbackPackageOrDbName - Either a feedback package or a database name to open
    * @param storagePrefix - Prefix for localStorage keys (default: 'backchannel')
    */
-  constructor(feedbackPackage: FeedbackPackage, storagePrefix?: string) {
-    this.feedbackPackageUrl = feedbackPackage.metadata.documentRootUrl
-    this.dbName = `backchannel_${this.generateDatabaseName(feedbackPackage)}`
-
-    // Initialize services
+  constructor(feedbackPackageOrDbName: FeedbackPackage | string, storagePrefix?: string) {
     this.cacheService = new CacheService(storagePrefix)
-    this.dbService = new DatabaseService(this.dbName, feedbackPackage)
-    this.seedService = new SeedDataService(this.cacheService)
 
-    // Cache the database info
-    this.cacheService.cacheDatabaseInfo(this.feedbackPackageUrl, this.dbName)
+    if (typeof feedbackPackageOrDbName === 'string') {
+      // We're opening an existing database by name
+      this.dbName = feedbackPackageOrDbName
+      this.dbService = new DatabaseService(this.dbName)
+    } else {
+      // We're creating/opening a database with a feedback package
+      const feedbackPackage = feedbackPackageOrDbName
+      this.feedbackPackageUrl = feedbackPackage.metadata.documentRootUrl
+      this.dbName = `backchannel_${this.generateDatabaseName(feedbackPackage)}`
+      this.dbService = new DatabaseService(this.dbName, feedbackPackage)
+
+      // Cache the database info
+      if (this.feedbackPackageUrl) {
+        this.cacheService.cacheDatabaseInfo(this.feedbackPackageUrl, this.dbName)
+      }
+    }
+
+    this.seedService = new SeedDataService(this.cacheService)
   }
 
   /**
@@ -56,6 +66,26 @@ export class StorageService {
     }
 
     return Math.abs(hash).toString(36)
+  }
+
+  /**
+   * Gets the URL of the current feedback package
+   * @returns The URL of the current feedback package
+   */
+  async getFeedbackPackageUrl(): Promise<string | undefined> {
+    if (this.feedbackPackageUrl) {
+      return this.feedbackPackageUrl
+    }
+
+    // Try to get it from the feedback package
+    try {
+      const feedbackPackage = await this.getFeedbackPackage()
+      this.feedbackPackageUrl = feedbackPackage.metadata.documentRootUrl
+      return this.feedbackPackageUrl
+    } catch (error) {
+      console.error('Failed to get feedback package URL:', error)
+      return undefined
+    }
   }
 
   /**
@@ -233,6 +263,25 @@ export class StorageService {
   ): string | undefined {
     const cacheService = new CacheService(storagePrefix)
     return cacheService.getCachedDatabaseName(feedbackPackageUrl)
+  }
+
+  /**
+   * Creates a StorageService instance for an existing database
+   * @param feedbackPackageUrl - URL of the feedback package
+   * @param storagePrefix - Prefix for localStorage keys
+   * @returns StorageService instance or undefined if not found in cache
+   */
+  static fromExistingDatabase(
+    feedbackPackageUrl: string,
+    storagePrefix?: string
+  ): StorageService | undefined {
+    const dbName = StorageService.getCachedDatabaseName(feedbackPackageUrl, storagePrefix)
+
+    if (dbName) {
+      return new StorageService(dbName, storagePrefix)
+    }
+
+    return undefined
   }
 
   /**

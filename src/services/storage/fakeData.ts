@@ -18,8 +18,6 @@ export const createSampleFeedbackPackage = (): FeedbackPackage => {
       documentTitle: 'Military Field Operations Manual',
       documentRootUrl: 'https://example.mil/field-ops-manual',
       documentVersion: '2.3.1',
-      reviewDeadline: now + 14 * 24 * 60 * 60 * 1000, // 14 days from now
-      reviewers: ['Smith, John', 'Johnson, Sarah', 'Williams, Robert'],
     },
     comments: createSampleComments(),
     createdAt: now,
