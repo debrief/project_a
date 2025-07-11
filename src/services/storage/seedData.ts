@@ -2,7 +2,7 @@
  * Database seeding utility for BackChannel
  */
 
-import { FeedbackPackage } from '../../types'
+import { FeedbackPackage, ReviewComment } from '../../types'
 import { CacheService } from './cache'
 
 /**
@@ -41,7 +41,7 @@ export class SeedDataService {
    */
   async seedDemoDatabaseIfNeeded(forceReseed = false): Promise<boolean> {
     // Check if the demo database seed is available
-    const demoSeed = (window as any).demoDatabaseSeed as DemoDatabaseSeed | undefined
+    const demoSeed = (window as Window & { demoDatabaseSeed?: DemoDatabaseSeed }).demoDatabaseSeed
 
     if (!demoSeed) {
       console.log('No demo database seed found')
@@ -146,11 +146,11 @@ export class SeedDataService {
 
         // Clear comments
         const commentsStore = transaction.objectStore('comments')
-        const clearCommentsRequest = commentsStore.clear()
+        commentsStore.clear()
 
         // Clear feedback package
         const feedbackPackageStore = transaction.objectStore('feedbackPackage')
-        const clearFeedbackPackageRequest = feedbackPackageStore.clear()
+        feedbackPackageStore.clear()
 
         transaction.oncomplete = () => {
           resolve()
@@ -183,7 +183,7 @@ export class SeedDataService {
       try {
         const transaction = db.transaction('feedbackPackage', 'readwrite')
         const store = transaction.objectStore('feedbackPackage')
-        const request = store.add(feedbackPackage)
+        store.add(feedbackPackage)
 
         transaction.oncomplete = () => {
           resolve()
@@ -208,7 +208,7 @@ export class SeedDataService {
    * @param comments - Comments to seed
    * @returns Promise resolving when seeding is complete
    */
-  private async seedComments(db: IDBDatabase, comments: any[]): Promise<void> {
+  private async seedComments(db: IDBDatabase, comments: ReviewComment[]): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       try {
         const transaction = db.transaction('comments', 'readwrite')

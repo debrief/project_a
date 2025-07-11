@@ -105,5 +105,6 @@ export const demoDatabaseSeed = {
  * This should be called during development/testing to make the seed data available
  */
 export const attachDemoDatabaseSeed = (): void => {
-  ;(window as any).demoDatabaseSeed = demoDatabaseSeed
+  ;(window as unknown as { demoDatabaseSeed: typeof demoDatabaseSeed }).demoDatabaseSeed =
+    demoDatabaseSeed
 }
