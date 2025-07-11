@@ -2,19 +2,19 @@
 
 ## Summary
 
-Successfully implemented the core TypeScript interfaces and types for the BackChannel plugin as specified in Task 1.2 of the Implementation Plan. Created comprehensive type definitions for comments, feedback packages, page metadata, and plugin configuration. Added enums for feedback states and plugin modes. All types are properly documented with JSDoc comments and organized in a central types directory with appropriate exports.
+Successfully implemented the core TypeScript interfaces and types for the BackChannel plugin as specified in Task 1.2 of the Implementation Plan. Created comprehensive type definitions for capture comments, review comments, document metadata, and plugin configuration based on the structures defined in the persistence.md document. Added enums for comment states and plugin modes. All types are properly documented with JSDoc comments and organized in a central types directory with appropriate exports.
 
 ## Details
 
 ### Implementation Approach
 
 1. Created a central `/src/types/index.ts` file to contain all core interfaces and enums
-2. Defined the following types with comprehensive JSDoc documentation:
-   - `FeedbackState` enum for comment states (New, Acknowledged, Resolved)
+2. Defined the following types with comprehensive JSDoc documentation based on the structures in persistence.md:
+   - `CommentState` enum for comment states (Open, Accepted, Rejected, Resolved)
    - `PluginMode` enum for plugin modes (Capture, Review)
-   - `PageMetadata` interface for page information
-   - `Comment` interface for feedback comments
-   - `FeedbackPackage` interface for collections of comments
+   - `DocumentMetadata` interface for document information
+   - `CaptureComment` interface for feedback comments in capture mode
+   - `ReviewComment` interface extending CaptureComment for review mode
    - Enhanced `BackChannelConfig` interface with additional configuration options
 3. Updated references in the main plugin code to use the new types
 4. Created unit tests to verify the types work as expected
@@ -30,14 +30,16 @@ Successfully implemented the core TypeScript interfaces and types for the BackCh
  */
 
 /**
- * Represents the state of a feedback comment
+ * Represents the state of a feedback comment in review mode
  */
-export enum FeedbackState {
-  /** New comment that hasn't been reviewed */
-  New = 'new',
-  /** Comment that has been viewed but not resolved */
-  Acknowledged = 'acknowledged',
-  /** Comment that has been addressed and resolved */
+export enum CommentState {
+  /** Comment is open and needs to be addressed */
+  Open = 'open',
+  /** Comment has been accepted by the editor */
+  Accepted = 'accepted',
+  /** Comment has been rejected by the editor */
+  Rejected = 'rejected',
+  /** Comment has been resolved */
   Resolved = 'resolved',
 }
 
@@ -52,59 +54,47 @@ export enum PluginMode {
 }
 
 /**
- * Represents metadata about the page being commented on
+ * Represents document metadata
  */
-export interface PageMetadata {
-  /** The URL of the page */
-  url: string
-  /** The title of the page */
-  title: string
-  /** Timestamp when the page was accessed */
-  timestamp: number
-  /** Any additional page-specific metadata */
-  additionalInfo?: Record<string, unknown>
+export interface DocumentMetadata {
+  /** Title of the document */
+  documentTitle: string
+  /** Root URL for the document set (shared URL prefix) */
+  documentRootUrl: string
 }
 
 /**
- * Represents a single feedback comment
+ * Represents a comment created in Capture mode
  */
-export interface Comment {
-  /** Unique identifier for the comment */
+export interface CaptureComment {
+  /** Unique identifier, derived from timestamp at creation */
   id: string
-  /** The actual comment text */
+  /** Comment content */
   text: string
-  /** The author of the comment (typically initials or name) */
-  author: string
-  /** Timestamp when the comment was created */
+  /** Absolute URL of the page on which the comment was made */
+  pageUrl: string
+  /** Time the comment was created */
   timestamp: number
-  /** CSS selector to identify the commented element */
-  elementSelector: string
-  /** The current state of the comment */
-  state: FeedbackState
-  /** Optional screenshot or visual reference (base64 encoded) */
-  screenshot?: string
-  /** Reference to the page where the comment was made */
-  pageMetadata: PageMetadata
+  /** An XPath string pointing to the DOM element the comment refers to */
+  location: string
+  /** A short snippet of text within the target element (optional) */
+  snippet?: string
+  /** Reviewer initials or short name (optional) */
+  author?: string
 }
 
 /**
- * Represents a collection of feedback comments
+ * Represents a comment in Review mode, extending the CaptureComment
  */
-export interface FeedbackPackage {
-  /** Unique identifier for the package */
-  id: string
-  /** Title of the feedback package */
-  title: string
-  /** Author or creator of the feedback package */
-  author: string
-  /** Timestamp when the package was created */
-  createdAt: number
-  /** Timestamp when the package was last modified */
-  updatedAt: number
-  /** Collection of comments in this package */
-  comments: Comment[]
-  /** Any additional metadata for the package */
-  metadata?: Record<string, unknown>
+export interface ReviewComment extends CaptureComment {
+  /** Status of the comment */
+  state: CommentState
+  /** Optional notes from the editor */
+  editorNotes?: string
+  /** Initials or short name of the editor who handled the comment */
+  reviewedBy?: string
+  /** Timestamp of when the comment was reviewed */
+  reviewedAt?: number
 }
 
 /**

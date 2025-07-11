@@ -4,19 +4,20 @@
 
 import {
   BackChannelConfig,
-  Comment,
-  FeedbackPackage,
-  FeedbackState,
-  PageMetadata,
+  CaptureComment,
+  ReviewComment,
+  CommentState,
+  DocumentMetadata,
   PluginMode,
 } from '../src/types'
 
 describe('BackChannel Types', () => {
   describe('Enums', () => {
-    test('FeedbackState has the correct values', () => {
-      expect(FeedbackState.New).toBe('new')
-      expect(FeedbackState.Acknowledged).toBe('acknowledged')
-      expect(FeedbackState.Resolved).toBe('resolved')
+    test('CommentState has the correct values', () => {
+      expect(CommentState.Open).toBe('open')
+      expect(CommentState.Accepted).toBe('accepted')
+      expect(CommentState.Rejected).toBe('rejected')
+      expect(CommentState.Resolved).toBe('resolved')
     })
 
     test('PluginMode has the correct values', () => {
@@ -26,82 +27,60 @@ describe('BackChannel Types', () => {
   })
 
   describe('Interfaces', () => {
-    test('Can create a valid PageMetadata object', () => {
-      const pageMetadata: PageMetadata = {
-        url: 'https://example.com',
-        title: 'Example Page',
-        timestamp: Date.now(),
-        additionalInfo: {
-          author: 'Test Author',
-          version: '1.0.0',
-        },
+    test('Can create a valid DocumentMetadata object', () => {
+      const documentMetadata: DocumentMetadata = {
+        documentTitle: 'Example Document',
+        documentRootUrl: 'https://example.com/docs/',
       }
 
-      expect(pageMetadata.url).toBe('https://example.com')
-      expect(pageMetadata.title).toBe('Example Page')
-      expect(typeof pageMetadata.timestamp).toBe('number')
-      expect(pageMetadata.additionalInfo?.author).toBe('Test Author')
+      expect(documentMetadata.documentTitle).toBe('Example Document')
+      expect(documentMetadata.documentRootUrl).toBe('https://example.com/docs/')
     })
 
-    test('Can create a valid Comment object', () => {
-      const pageMetadata: PageMetadata = {
-        url: 'https://example.com',
-        title: 'Example Page',
-        timestamp: Date.now(),
-      }
-
-      const comment: Comment = {
+    test('Can create a valid CaptureComment object', () => {
+      const comment: CaptureComment = {
         id: '123',
         text: 'This is a test comment',
-        author: 'JD',
+        pageUrl: 'https://example.com/docs/page1.html',
         timestamp: Date.now(),
-        elementSelector: '#test-element',
-        state: FeedbackState.New,
-        pageMetadata,
+        location: '/html/body/div[1]/p[2]',
+        snippet: 'This is the text being commented on',
+        author: 'JD',
       }
 
       expect(comment.id).toBe('123')
       expect(comment.text).toBe('This is a test comment')
+      expect(comment.pageUrl).toBe('https://example.com/docs/page1.html')
+      expect(typeof comment.timestamp).toBe('number')
+      expect(comment.location).toBe('/html/body/div[1]/p[2]')
+      expect(comment.snippet).toBe('This is the text being commented on')
       expect(comment.author).toBe('JD')
-      expect(comment.state).toBe(FeedbackState.New)
-      expect(comment.pageMetadata).toBe(pageMetadata)
     })
 
-    test('Can create a valid FeedbackPackage object', () => {
-      const pageMetadata: PageMetadata = {
-        url: 'https://example.com',
-        title: 'Example Page',
-        timestamp: Date.now(),
-      }
-
-      const comment: Comment = {
+    test('Can create a valid ReviewComment object', () => {
+      const captureComment: CaptureComment = {
         id: '123',
         text: 'This is a test comment',
-        author: 'JD',
+        pageUrl: 'https://example.com/docs/page1.html',
         timestamp: Date.now(),
-        elementSelector: '#test-element',
-        state: FeedbackState.New,
-        pageMetadata,
+        location: '/html/body/div[1]/p[2]',
+        author: 'JD',
       }
 
-      const feedbackPackage: FeedbackPackage = {
-        id: 'package-123',
-        title: 'Test Feedback Package',
-        author: 'John Doe',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        comments: [comment],
-        metadata: {
-          version: '1.0.0',
-        },
+      const reviewComment: ReviewComment = {
+        ...captureComment,
+        state: CommentState.Accepted,
+        editorNotes: 'This has been addressed',
+        reviewedBy: 'Editor',
+        reviewedAt: Date.now(),
       }
 
-      expect(feedbackPackage.id).toBe('package-123')
-      expect(feedbackPackage.title).toBe('Test Feedback Package')
-      expect(feedbackPackage.author).toBe('John Doe')
-      expect(feedbackPackage.comments.length).toBe(1)
-      expect(feedbackPackage.comments[0]).toBe(comment)
-      expect(feedbackPackage.metadata?.version).toBe('1.0.0')
+      expect(reviewComment.id).toBe('123')
+      expect(reviewComment.text).toBe('This is a test comment')
+      expect(reviewComment.state).toBe(CommentState.Accepted)
+      expect(reviewComment.editorNotes).toBe('This has been addressed')
+      expect(reviewComment.reviewedBy).toBe('Editor')
+      expect(typeof reviewComment.reviewedAt).toBe('number')
     })
 
     test('Can create a valid BackChannelConfig object', () => {
