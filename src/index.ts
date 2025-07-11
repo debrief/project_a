@@ -3,13 +3,8 @@
  * A lightweight JavaScript plugin for capturing and reviewing feedback on static web content
  */
 
-// Types
-export interface BackChannelConfig {
-  targetSelector?: string
-  requireInitials?: boolean
-  allowExport?: boolean
-  storageKey?: string
-}
+// Import types
+import { BackChannelConfig, PluginMode } from './types'
 
 // Main class
 class BackChannel {
@@ -20,6 +15,10 @@ class BackChannel {
       targetSelector: '.reviewable',
       requireInitials: true,
       allowExport: true,
+      storageKey: 'backchannel',
+      initialMode: PluginMode.Capture,
+      showIconOnLoad: true,
+      iconPosition: 'top-right',
       ...config,
     }
 

@@ -2,7 +2,8 @@
  * Global type definitions for BackChannel
  */
 
-import { BackChannelConfig } from '../index'
+import { BackChannelConfig } from './index'
+import BackChannel from '../index'
 
 declare global {
   interface Window {
