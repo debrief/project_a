@@ -44,7 +44,7 @@ export interface CaptureComment {
   id: string
   /** Comment content */
   text: string
-  /** Absolute URL of the page on which the comment was made */
+  /** URL of the page on which the comment was made, relative to the documentRootUrl */
   pageUrl: string
   /** Time the comment was created */
   timestamp: number
