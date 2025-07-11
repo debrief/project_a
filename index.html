@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BackChannel Demo</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .reviewable {
+      padding: 10px;
+      border: 1px solid #eee;
+      margin-bottom: 10px;
+    }
+    h1, h2, h3 {
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <h1>BackChannel Demo</h1>
+  
+  <div class="reviewable">
+    <h2>Introduction</h2>
+    <p>This is a demonstration of the BackChannel plugin for capturing feedback on static web content.</p>
+  </div>
+  
+  <div class="reviewable">
+    <h2>Features</h2>
+    <ul>
+      <li>Capture feedback on any element</li>
+      <li>Export comments as CSV</li>
+      <li>Works offline</li>
+      <li>Cross-page support</li>
+    </ul>
+  </div>
+  
+  <div class="reviewable">
+    <h2>How to Use</h2>
+    <p>Click the BC icon in the top-right corner to start capturing feedback.</p>
+  </div>
+  
+  <script src="/src/index.ts" type="module"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Initialize BackChannel when available
+      if (window.BackChannel) {
+        window.BackChannel.init({
+          targetSelector: '.reviewable'
+        });
+      }
+    });
+  </script>
+</body>
+</html>
