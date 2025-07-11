@@ -39,7 +39,7 @@ const instance = new BackChannel()
 
 // Create global instance
 if (typeof window !== 'undefined') {
-  ;(window as any).BackChannel = {
+  window.BackChannel = {
     init: (config: BackChannelConfig = {}) => {
       Object.assign(instance, new BackChannel(config))
       instance.init()

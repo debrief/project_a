@@ -7,7 +7,7 @@ import { BackChannelConfig } from '../index'
 declare global {
   interface Window {
     BackChannel: {
-      init: (config?: BackChannelConfig) => any
+      init: (config?: BackChannelConfig) => BackChannel
     }
   }
 }
