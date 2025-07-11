@@ -57,6 +57,7 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
   3. Implement localStorage caching for current feedback package URL and database name (to allow quick access of database when opening a new page in the existing document set)
   4. Create utility that seeds JSON data into IndexedDB for testing, according to `docs/project/pre-populate-database.md`
   5. Add error handling and fallbacks
+  - **Testing Strategy**: Skip complex unit tests for storage service; validate functionality through e2e tests once UI components are implemented to test against real IndexedDB implementation
   - **Guiding Notes**: Use IndexedDB for primary storage, localStorage for caching, implement version checking
 
 ### Phase 2: Capture Mode - Core Functionality (Agent: UI Developer)
@@ -100,6 +101,7 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
   4. Add comment list display in sidebar
   5. Implement sidebar state persistence
   6. Update e2e tests to verify sidebar functionality, and that seeded database comments are displayed
+  7. Do the delayed e2e tests for storage service
   - **Guiding Notes**: Sidebar should be collapsible, use CSS transitions for smooth animations, persist state in localStorage
 
 #### Task 2.4: Element Selection & Highlighting
