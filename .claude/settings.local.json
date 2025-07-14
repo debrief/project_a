@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(yarn init:*)",
+      "Bash(yarn add:*)",
+      "Bash(mkdir:*)",
+      "Bash(yarn build-plugin:*)",
+      "Bash(rm:*)",
+      "Bash(npx husky:*)",
+      "Bash(ls:*)",
+      "Bash(chmod:*)",
+      "Bash(yarn test)",
+      "Bash(yarn lint)",
+      "Bash(yarn format)",
+      "Bash(yarn lint:*)"
+    ],
+    "deny": []
+  }
+}

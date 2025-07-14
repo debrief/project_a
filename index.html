@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BackChannel Plugin - Welcome</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #007acc;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #555;
+            margin-top: 30px;
+        }
+        .reviewable {
+            background-color: #f8f9fa;
+            border-left: 4px solid #007acc;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .demo-section {
+            background-color: #e8f4f8;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        .button {
+            background-color: #007acc;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        .button:hover {
+            background-color: #005fa3;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        code {
+            background-color: #f1f1f1;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to BackChannel</h1>
+        <p>BackChannel is a lightweight, offline-first JavaScript plugin for capturing and reviewing feedback within static HTML content.</p>
+        
+        <h2>Getting Started</h2>
+        <div class="demo-section">
+            <p>Click the button below to initialize the BackChannel plugin:</p>
+            <button class="button" onclick="initializePlugin()">Initialize Plugin</button>
+            <div id="status" class="status" style="display: none;">
+                Plugin initialized successfully!
+            </div>
+        </div>
+
+        <h2>Sample Content for Testing</h2>
+        <p>The content below has the <code>reviewable</code> class applied, making it available for feedback capture:</p>
+        
+        <div class="reviewable">
+            <h3>Sample Document Section</h3>
+            <p>This is a sample paragraph that can be selected for feedback. In a real-world scenario, document reviewers would click on elements like this to add comments and suggestions.</p>
+        </div>
+
+        <div class="reviewable">
+            <h3>Another Reviewable Section</h3>
+            <p>Here's another section that supports feedback capture. The BackChannel plugin allows users to:</p>
+            <ul>
+                <li>Select specific content elements</li>
+                <li>Add detailed comments and feedback</li>
+                <li>Export feedback packages as CSV files</li>
+                <li>Work completely offline</li>
+            </ul>
+        </div>
+
+        <div class="reviewable">
+            <h3>Technical Features</h3>
+            <p>BackChannel is designed specifically for air-gapped environments and includes:</p>
+            <ul>
+                <li><strong>Offline Operation:</strong> No network connectivity required</li>
+                <li><strong>Local Storage:</strong> Uses IndexedDB for persistent data storage</li>
+                <li><strong>CSV Export:</strong> Human-readable feedback packages</li>
+                <li><strong>Cross-Page Support:</strong> Maintains context across multiple pages</li>
+            </ul>
+        </div>
+
+        <h2>Plugin Status</h2>
+        <p>Current plugin state: <span id="plugin-state">Not initialized</span></p>
+        <p>Configuration: <span id="plugin-config">None</span></p>
+        
+        <h2>Testing Instructions</h2>
+        <div class="demo-section">
+            <p>To test the plugin functionality:</p>
+            <ol>
+                <li>Click "Initialize Plugin" above</li>
+                <li>Try selecting reviewable content (highlighted sections)</li>
+                <li>Check browser console for initialization messages</li>
+                <li>Verify plugin state and configuration display</li>
+            </ol>
+        </div>
+    </div>
+
+    <script src="dist/backchannel.js"></script>
+    <script>
+        function initializePlugin() {
+            if (typeof window.BackChannel !== 'undefined') {
+                window.BackChannel.init({
+                    requireInitials: true,
+                    storageKey: 'backchannel-demo',
+                    targetSelector: '.reviewable',
+                    allowExport: true
+                });
+                
+                document.getElementById('status').style.display = 'block';
+                updatePluginInfo();
+            } else {
+                alert('BackChannel plugin not found. Please ensure dist/backchannel.js is built.');
+            }
+        }
+
+        function updatePluginInfo() {
+            if (typeof window.BackChannel !== 'undefined') {
+                const state = window.BackChannel.getState();
+                const config = window.BackChannel.getConfig();
+                
+                document.getElementById('plugin-state').textContent = state;
+                document.getElementById('plugin-config').textContent = JSON.stringify(config, null, 2);
+            }
+        }
+
+        // Update plugin info on page load if plugin is available
+        window.addEventListener('load', () => {
+            if (typeof window.BackChannel !== 'undefined') {
+                updatePluginInfo();
+            }
+        });
+    </script>
+</body>
+</html>
