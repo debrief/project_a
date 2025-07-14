@@ -39,5 +39,7 @@
     "vite": "^7.0.4",
     "vitest": "^3.2.4"
   },
-  "dependencies": {}
+  "dependencies": {
+    "lit": "^3.3.1"
+  }
 }

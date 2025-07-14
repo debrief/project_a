@@ -76,7 +76,7 @@ test.describe('Welcome Page', () => {
     await expect(icon).toHaveClass(/inactive/);
   });
 
-  test('should handle icon click and state changes', async ({ page }) => {
+  test('should handle icon click and open package creation modal', async ({ page }) => {
     // Wait for the script to load and auto-initialize
     await page.waitForLoadState('networkidle');
     
@@ -89,16 +89,28 @@ test.describe('Welcome Page', () => {
     // Initially should be inactive
     await expect(icon).toHaveClass(/inactive/);
     
-    // Click to change to capture state
+    // Click to open package creation modal
     await icon.click();
-    await expect(icon).toHaveClass(/capture/);
     
-    // Click again to change to review state
-    await icon.click();
-    await expect(icon).toHaveClass(/review/);
+    // Wait for modal to appear
+    await page.waitForTimeout(200);
     
-    // Click once more to return to inactive
-    await icon.click();
+    // Check that modal is visible
+    const modal = page.locator('package-creation-modal');
+    await expect(modal).toBeVisible();
+    
+    // Check modal title
+    const title = modal.locator('#modal-title');
+    await expect(title).toContainText('Create Feedback Package');
+    
+    // Close modal
+    const closeButton = modal.locator('.backchannel-modal-close');
+    await closeButton.click();
+    
+    // Modal should be closed
+    await expect(modal).not.toBeVisible();
+    
+    // Icon should still be inactive
     await expect(icon).toHaveClass(/inactive/);
   });
 

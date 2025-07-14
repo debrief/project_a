@@ -5,6 +5,8 @@
  */
 
 import { FeedbackState } from '../types';
+import { PackageCreationModal } from './PackageCreationModal';
+import { DatabaseService } from '../services/DatabaseService';
 
 /**
  * BackChannel Icon Component
@@ -14,11 +16,15 @@ export class BackChannelIcon {
   private element: HTMLElement;
   private state: FeedbackState;
   private clickHandler?: () => void;
+  private databaseService: DatabaseService;
+  private packageModal: PackageCreationModal | null = null;
 
-  constructor() {
+  constructor(databaseService: DatabaseService) {
+    this.databaseService = databaseService;
     this.state = FeedbackState.INACTIVE;
     this.element = this.createElement();
     this.attachToDOM();
+    this.initializeModal();
   }
 
   /**
@@ -50,6 +56,30 @@ export class BackChannelIcon {
    */
   private attachToDOM(): void {
     document.body.appendChild(this.element);
+  }
+
+  /**
+   * Initialize the package creation modal
+   */
+  private initializeModal(): void {
+    this.packageModal = new PackageCreationModal();
+    this.packageModal.databaseService = this.databaseService;
+    this.packageModal.options = {
+      onSuccess: metadata => {
+        console.log('Package created successfully:', metadata);
+        this.setState(FeedbackState.CAPTURE);
+      },
+      onCancel: () => {
+        console.log('Package creation cancelled');
+      },
+      onError: error => {
+        console.error('Package creation failed:', error);
+        alert('Failed to create feedback package. Please try again.');
+      },
+    };
+
+    // Add modal to DOM
+    document.body.appendChild(this.packageModal);
   }
 
   /**
@@ -135,6 +165,15 @@ export class BackChannelIcon {
   }
 
   /**
+   * Open the package creation modal
+   */
+  openPackageModal(): void {
+    if (this.packageModal) {
+      this.packageModal.show();
+    }
+  }
+
+  /**
    * Remove the icon from the DOM
    */
   destroy(): void {
@@ -143,6 +182,11 @@ export class BackChannelIcon {
 
     if (this.element.parentNode) {
       this.element.parentNode.removeChild(this.element);
+    }
+
+    // Clean up modal
+    if (this.packageModal && this.packageModal.parentNode) {
+      this.packageModal.parentNode.removeChild(this.packageModal);
     }
   }
 }

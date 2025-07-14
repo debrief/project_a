@@ -86,7 +86,7 @@ class BackChannelPlugin {
     this.injectStyles();
 
     // Create and initialize the icon
-    this.icon = new BackChannelIcon();
+    this.icon = new BackChannelIcon(this.databaseService);
     this.icon.setState(this.state);
     this.icon.setClickHandler(() => this.handleIconClick());
 
@@ -192,10 +192,10 @@ class BackChannelPlugin {
   private handleIconClick(): void {
     console.log('BackChannel icon clicked, current state:', this.state);
 
-    // Toggle between states for demonstration
     switch (this.state) {
       case FeedbackState.INACTIVE:
-        this.setState(FeedbackState.CAPTURE);
+        // Check if metadata exists, if not open package creation modal
+        this.checkMetadataOrCreatePackage();
         break;
       case FeedbackState.CAPTURE:
         this.setState(FeedbackState.REVIEW);
@@ -203,6 +203,26 @@ class BackChannelPlugin {
       case FeedbackState.REVIEW:
         this.setState(FeedbackState.INACTIVE);
         break;
+    }
+  }
+
+  private async checkMetadataOrCreatePackage(): Promise<void> {
+    try {
+      const metadata = await this.databaseService.getMetadata();
+
+      if (metadata) {
+        // Metadata exists, activate capture mode
+        console.log('Existing metadata found:', metadata);
+        this.setState(FeedbackState.CAPTURE);
+      } else {
+        // No metadata, show package creation modal
+        console.log('No metadata found, opening package creation modal');
+        this.icon?.openPackageModal();
+      }
+    } catch (error) {
+      console.error('Error checking metadata:', error);
+      // Fallback to opening modal on error
+      this.icon?.openPackageModal();
     }
   }
 

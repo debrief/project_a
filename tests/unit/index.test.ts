@@ -1,6 +1,46 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { FeedbackState } from '../../src/types';
 
+// Mock Lit components before they are imported
+vi.mock('lit', () => ({
+  LitElement: class {
+    render() { return {}; }
+    connectedCallback() {}
+    disconnectedCallback() {}
+    setAttribute() {}
+    removeAttribute() {}
+    updateComplete = Promise.resolve();
+  },
+  html: (strings: TemplateStringsArray, ...values: any[]) => ({ strings, values }),
+  css: (strings: TemplateStringsArray, ...values: any[]) => ({ strings, values }),
+}));
+
+vi.mock('lit/decorators.js', () => ({
+  customElement: () => (target: any) => target,
+  property: () => (target: any, key: string) => {},
+  state: () => (target: any, key: string) => {},
+  query: () => (target: any, key: string) => {},
+}));
+
+// Mock createTreeWalker for DOM
+global.document = {
+  ...global.document,
+  createTreeWalker: vi.fn(() => ({
+    nextNode: vi.fn(() => null),
+    currentNode: null,
+  })),
+  body: {
+    ...global.document?.body,
+    appendChild: vi.fn(),
+    removeChild: vi.fn(),
+    style: {},
+    classList: {
+      add: vi.fn(),
+      remove: vi.fn(),
+    },
+  },
+} as any;
+
 // Mock IndexedDB for testing
 const mockIndexedDB = {
   open: vi.fn(() => ({
