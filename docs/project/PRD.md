@@ -62,7 +62,7 @@ Designed for document authors. Loads and manages feedback provided via BackChann
 - Feedback stored in IndexedDB
 - Each document set has its own database
 - Database identified via URL root and name
-- Current page's database cached in `localStorage` for performance
+- Currently open database id and page root URL cached in `localStorage` for performance (making it quicker to determine if there is a BackChannel database for a newly opened page)
 
 ### Feedback Export
 

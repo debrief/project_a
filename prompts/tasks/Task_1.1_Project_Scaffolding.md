@@ -102,4 +102,4 @@ If any part of this task assignment is unclear, please state your specific quest
 - UI components: Built from scratch (no external libraries)
 - Deployment: Single-file JS with self-injecting CSS
 - Build system: Vite/TypeScript
-- Data storage: IndexedDB with localStorage caching
+- Data storage: IndexedDB with localStorage caching of database id and page root URL
