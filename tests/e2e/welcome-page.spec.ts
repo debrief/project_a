@@ -10,9 +10,9 @@ test.describe('Welcome Page', () => {
     await expect(page.getByText('BackChannel is a lightweight, offline-first')).toBeVisible();
   });
 
-  test('should have initialize plugin button', async ({ page }) => {
-    const initButton = page.getByRole('button', { name: 'Initialize Plugin' });
-    await expect(initButton).toBeVisible();
+  test('should have reinitialize plugin button', async ({ page }) => {
+    const reinitButton = page.getByRole('button', { name: 'Reinitialize with Custom Config' });
+    await expect(reinitButton).toBeVisible();
   });
 
   test('should display reviewable content sections', async ({ page }) => {
@@ -26,8 +26,8 @@ test.describe('Welcome Page', () => {
     await expect(reviewableElements).toHaveCount(3);
   });
 
-  test('should show plugin not initialized initially', async ({ page }) => {
-    await expect(page.getByText('Not initialized')).toBeVisible();
+  test('should show plugin auto-initialized successfully', async ({ page }) => {
+    await expect(page.getByText('Plugin auto-initialized successfully!')).toBeVisible();
   });
 
   test('should load BackChannel script', async ({ page }) => {
@@ -36,26 +36,29 @@ test.describe('Welcome Page', () => {
     await expect(scriptTag).toBeVisible();
   });
 
-  test('should initialize plugin when button is clicked', async ({ page }) => {
-    // Wait for the script to load
+  test('should reinitialize plugin when button is clicked', async ({ page }) => {
+    // Wait for the script to load and auto-initialize
     await page.waitForLoadState('networkidle');
     
-    // Click initialize button
-    await page.getByRole('button', { name: 'Initialize Plugin' }).click();
+    // Click reinitialize button
+    await page.getByRole('button', { name: 'Reinitialize with Custom Config' }).click();
     
-    // Check that status message appears
-    await expect(page.getByText('Plugin initialized successfully!')).toBeVisible();
+    // Check that alert appears
+    page.on('dialog', async dialog => {
+      expect(dialog.message()).toContain('Plugin reinitialized with custom configuration!');
+      await dialog.accept();
+    });
     
-    // Check that plugin state is no longer "Not initialized"
-    await expect(page.getByText('Not initialized')).not.toBeVisible();
+    // Check that plugin configuration is updated
+    await expect(page.locator('#plugin-config')).toContainText('backchannel-demo-custom');
   });
 
-  test('should display plugin configuration after initialization', async ({ page }) => {
-    // Wait for the script to load
+  test('should display plugin configuration after auto-initialization', async ({ page }) => {
+    // Wait for the script to load and auto-initialize
     await page.waitForLoadState('networkidle');
     
-    // Click initialize button
-    await page.getByRole('button', { name: 'Initialize Plugin' }).click();
+    // Wait a bit for the UI to update
+    await page.waitForTimeout(200);
     
     // Check that configuration is displayed
     const configElement = page.locator('#plugin-config');
@@ -76,7 +79,7 @@ test.describe('Welcome Page', () => {
       await dialog.accept();
     });
     
-    // Click initialize button
-    await page.getByRole('button', { name: 'Initialize Plugin' }).click();
+    // Click reinitialize button
+    await page.getByRole('button', { name: 'Reinitialize with Custom Config' }).click();
   });
 });

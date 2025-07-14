@@ -63,6 +63,15 @@ if (typeof window !== 'undefined') {
     getState: () => backChannelInstance.getState(),
     getConfig: () => backChannelInstance.getConfig(),
   };
+
+  // Auto-initialize with default configuration when document is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      backChannelInstance.init();
+    });
+  } else {
+    backChannelInstance.init();
+  }
 }
 
 export default backChannelInstance;

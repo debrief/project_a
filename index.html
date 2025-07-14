@@ -77,11 +77,11 @@
         
         <h2>Getting Started</h2>
         <div class="demo-section">
-            <p>Click the button below to initialize the BackChannel plugin:</p>
-            <button class="button" onclick="initializePlugin()">Initialize Plugin</button>
-            <div id="status" class="status" style="display: none;">
-                Plugin initialized successfully!
+            <p>The BackChannel plugin initializes automatically when the page loads. No manual initialization required!</p>
+            <div id="status" class="status">
+                Plugin auto-initialized successfully!
             </div>
+            <button class="button" onclick="reinitializePlugin()">Reinitialize with Custom Config</button>
         </div>
 
         <h2>Sample Content for Testing</h2>
@@ -118,51 +118,45 @@
         <p>Current plugin state: <span id="plugin-state">Not initialized</span></p>
         <p>Configuration: <span id="plugin-config">None</span></p>
         
-        <h2>Testing Instructions</h2>
+        <h2>Usage Instructions</h2>
         <div class="demo-section">
-            <p>To test the plugin functionality:</p>
+            <p>For document authors:</p>
             <ol>
-                <li>Click "Initialize Plugin" above</li>
-                <li>Try selecting reviewable content (highlighted sections)</li>
-                <li>Check browser console for initialization messages</li>
-                <li>Verify plugin state and configuration display</li>
+                <li>Simply add <code>&lt;script src="backchannel.js"&gt;&lt;/script&gt;</code> to your HTML</li>
+                <li>The plugin auto-initializes when the page loads</li>
+                <li>No additional configuration required</li>
+                <li>Users can then select reviewable content and provide feedback</li>
             </ol>
         </div>
     </div>
 
     <script src="dist/backchannel.js"></script>
     <script>
-        function initializePlugin() {
-            if (typeof window.BackChannel !== 'undefined') {
-                window.BackChannel.init({
-                    requireInitials: true,
-                    storageKey: 'backchannel-demo',
-                    targetSelector: '.reviewable',
-                    allowExport: true
-                });
-                
-                document.getElementById('status').style.display = 'block';
-                updatePluginInfo();
-            } else {
-                alert('BackChannel plugin not found. Please ensure dist/backchannel.js is built.');
-            }
+        // Optional: Demo function to show reinitialization capability
+        function reinitializePlugin() {
+            window.BackChannel.init({
+                requireInitials: true,
+                storageKey: 'backchannel-demo-custom',
+                targetSelector: '.reviewable',
+                allowExport: true
+            });
+            
+            updatePluginInfo();
+            alert('Plugin reinitialized with custom configuration!');
         }
 
+        // Display current plugin state and configuration
         function updatePluginInfo() {
-            if (typeof window.BackChannel !== 'undefined') {
-                const state = window.BackChannel.getState();
-                const config = window.BackChannel.getConfig();
-                
-                document.getElementById('plugin-state').textContent = state;
-                document.getElementById('plugin-config').textContent = JSON.stringify(config, null, 2);
-            }
+            const state = window.BackChannel.getState();
+            const config = window.BackChannel.getConfig();
+            
+            document.getElementById('plugin-state').textContent = state;
+            document.getElementById('plugin-config').textContent = JSON.stringify(config, null, 2);
         }
 
-        // Update plugin info on page load if plugin is available
+        // Update display after auto-initialization
         window.addEventListener('load', () => {
-            if (typeof window.BackChannel !== 'undefined') {
-                updatePluginInfo();
-            }
+            setTimeout(updatePluginInfo, 100);
         });
     </script>
 </body>

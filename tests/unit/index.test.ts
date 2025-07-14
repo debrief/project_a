@@ -23,9 +23,16 @@ describe('BackChannel Plugin', () => {
     expect(typeof window.BackChannel.init).toBe('function');
     expect(typeof window.BackChannel.getState).toBe('function');
     expect(typeof window.BackChannel.getConfig).toBe('function');
+    
+    // Check that plugin auto-initialized with default config
+    const config = window.BackChannel.getConfig();
+    expect(config.requireInitials).toBe(false);
+    expect(config.storageKey).toBe('backchannel-feedback');
+    expect(config.targetSelector).toBe('.reviewable');
+    expect(config.allowExport).toBe(true);
   });
 
-  it('should have inactive state initially', async () => {
+  it('should have inactive state after auto-initialization', async () => {
     await import('../../src/index');
     
     expect(window.BackChannel).toBeDefined();
@@ -33,7 +40,7 @@ describe('BackChannel Plugin', () => {
     expect(initialState).toBe(FeedbackState.INACTIVE);
   });
 
-  it('should initialize with custom configuration', async () => {
+  it('should allow reinitialization with custom configuration', async () => {
     await import('../../src/index');
     
     expect(window.BackChannel).toBeDefined();
@@ -45,6 +52,7 @@ describe('BackChannel Plugin', () => {
       allowExport: false,
     };
     
+    // Reinitialize with custom config
     window.BackChannel.init(config);
     
     const actualConfig = window.BackChannel.getConfig();
@@ -54,7 +62,7 @@ describe('BackChannel Plugin', () => {
     expect(actualConfig.allowExport).toBe(false);
   });
 
-  it('should merge configuration with defaults', async () => {
+  it('should merge partial configuration with defaults when reinitialized', async () => {
     await import('../../src/index');
     
     expect(window.BackChannel).toBeDefined();
@@ -63,6 +71,7 @@ describe('BackChannel Plugin', () => {
       requireInitials: true,
     };
     
+    // Reinitialize with partial config
     window.BackChannel.init(partialConfig);
     
     const actualConfig = window.BackChannel.getConfig();
@@ -72,11 +81,12 @@ describe('BackChannel Plugin', () => {
     expect(actualConfig.allowExport).toBe(true);
   });
 
-  it('should handle initialization without configuration', async () => {
+  it('should handle manual reinitialization without configuration', async () => {
     await import('../../src/index');
     
     expect(window.BackChannel).toBeDefined();
     
+    // Manually reinitialize without config (should use defaults)
     window.BackChannel.init();
     
     const actualConfig = window.BackChannel.getConfig();
