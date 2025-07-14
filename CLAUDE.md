@@ -10,7 +10,7 @@ The project uses the **Agentic Project Management (APM)** framework, which coord
 
 ## Key Technologies & Build System
 
-- **Language**: TypeScript compiled to ES6 JavaScript
+- **Language**: TypeScript compiled to ES6 JavaScript. Note: Typescript code should not use `any` type.
 - **Build System**: Vite (for development) and Vite bundler (for plugin output)
 - **Package Manager**: yarn
 - **Testing**: Vitest for unit tests, Playwright for integration/E2E tests
