@@ -53,6 +53,7 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
   3. Implement localStorage caching for performance
   4. Create utility that seeds JSON data into IndexedDB for testing, according to `docs/project/pre-populate-database.md`
   5. Add error handling and fallbacks
+  6. Constructor should take optional fakeIndexedDb parameter.  In unit testing a fake indexedDb is provided, removing need to mock browser implementation. When provided, the fakeIndexedDb is used instead of browser IndexedDb
   - **Guiding Notes**: Use IndexedDB for primary storage, localStorage for caching, implement version checking
 
 ### Phase 2: Capture Mode - Core Functionality (Agent: UI Developer)
