@@ -50,7 +50,7 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
 - **Action Steps**:
   1. Implement IndexedDB initialization and connection management
   2. Create CRUD operations for feedback packages and comments
-  3. Implement localStorage caching for performance
+  3. Implement localStorage caching of database id and document URL root, to quickly determine if a newly loaded page already has a feedback page.
   4. Create utility that seeds JSON data into IndexedDB for later UI testing, according to `docs/project/pre-populate-database.md`
   5. Constructor should take optional fakeIndexedDb parameter.  In unit testing a fake indexedDb is provided, removing need to mock browser implementation. When provided, the fakeIndexedDb is used instead of browser IndexedDb
   6. Add error handling and fallbacks. Use the fake indexedDb for unit testing of the storage service.  Use console logging of database access outcomes to verify seeding of browser database in playwright e2e testing.
