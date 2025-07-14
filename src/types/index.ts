@@ -145,10 +145,10 @@ export function isCaptureComment(value: unknown): value is CaptureComment {
 export function isReviewComment(value: unknown): value is ReviewComment {
   return (
     isCaptureComment(value) &&
-    'state' in (value as Record<string, unknown>) &&
-    typeof (value as Record<string, unknown>).state === 'string' &&
+    'state' in (value as unknown as Record<string, unknown>) &&
+    typeof (value as unknown as Record<string, unknown>).state === 'string' &&
     Object.values(CommentState).includes(
-      (value as Record<string, unknown>).state as CommentState
+      (value as unknown as Record<string, unknown>).state as CommentState
     )
   );
 }

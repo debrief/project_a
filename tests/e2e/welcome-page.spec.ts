@@ -32,7 +32,7 @@ test.describe('Welcome Page', () => {
 
   test('should load BackChannel script', async ({ page }) => {
     // Check if the script tag is present
-    const scriptTag = page.locator('script[src="dist/backchannel.js"]');
+    const scriptTag = page.locator('script[type="module"][src="src/index.ts"]');
     await expect(scriptTag).toBeVisible();
   });
 
@@ -162,7 +162,7 @@ test.describe('Welcome Page', () => {
   test('should handle missing plugin gracefully', async ({ page }) => {
     // Remove the script tag to simulate missing plugin
     await page.evaluate(() => {
-      const script = document.querySelector('script[src="dist/backchannel.js"]');
+      const script = document.querySelector('script[type="module"][src="src/index.ts"]');
       if (script) script.remove();
     });
     

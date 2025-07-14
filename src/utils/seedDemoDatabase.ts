@@ -29,7 +29,7 @@ function getDemoSeed(): DemoDatabaseSeed | null {
     return null;
   }
 
-  const seed = window.demoDatabaseSeed as Record<string, unknown>;
+  const seed = window.demoDatabaseSeed as unknown as Record<string, unknown>;
 
   // Validate seed structure
   if (!seed.version || typeof seed.version !== 'string') {
@@ -59,9 +59,9 @@ function getDemoSeed(): DemoDatabaseSeed | null {
   );
 
   return {
-    version: seed.version,
-    metadata: seed.metadata,
-    comments: validComments,
+    version: seed.version as string,
+    metadata: seed.metadata as DocumentMetadata,
+    comments: validComments as CaptureComment[],
   };
 }
 
