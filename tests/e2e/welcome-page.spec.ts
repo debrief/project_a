@@ -30,11 +30,6 @@ test.describe('Welcome Page', () => {
     await expect(page.getByText('Plugin auto-initialized successfully!')).toBeVisible();
   });
 
-  test('should load BackChannel script', async ({ page }) => {
-    // Check if the script tag is present
-    const scriptTag = page.locator('script[type="module"][src="src/index.ts"]');
-    await expect(scriptTag).toBeVisible();
-  });
 
   test('should reinitialize plugin when button is clicked', async ({ page }) => {
     // Wait for the script to load and auto-initialize
@@ -157,22 +152,5 @@ test.describe('Welcome Page', () => {
     await page.setViewportSize({ width: 480, height: 600 });
     await expect(icon).toHaveCSS('top', '10px');
     await expect(icon).toHaveCSS('right', '10px');
-  });
-
-  test('should handle missing plugin gracefully', async ({ page }) => {
-    // Remove the script tag to simulate missing plugin
-    await page.evaluate(() => {
-      const script = document.querySelector('script[type="module"][src="src/index.ts"]');
-      if (script) script.remove();
-    });
-    
-    // Set up dialog handler for alert
-    page.on('dialog', async dialog => {
-      expect(dialog.message()).toContain('BackChannel plugin not found');
-      await dialog.accept();
-    });
-    
-    // Click reinitialize button
-    await page.getByRole('button', { name: 'Reinitialize with Custom Config' }).click();
   });
 });

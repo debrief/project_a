@@ -20,7 +20,8 @@
       "Bash(find:*)",
       "Bash(yarn dev)",
       "Bash(npm run test:integration:*)",
-      "Bash(npx:*)"
+      "Bash(npx:*)",
+      "Bash(yarn test:*)"
     ],
     "deny": []
   }
