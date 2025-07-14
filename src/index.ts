@@ -82,13 +82,14 @@ class BackChannelPlugin {
   }
 
   private initializeUI(): void {
-    // Inject CSS styles
-    this.injectStyles();
-
     // Create and initialize the icon
-    this.icon = new BackChannelIcon(this.databaseService);
+    this.icon = document.createElement('backchannel-icon') as BackChannelIcon;
+    this.icon.databaseService = this.databaseService;
     this.icon.setState(this.state);
     this.icon.setClickHandler(() => this.handleIconClick());
+
+    // Add to DOM
+    document.body.appendChild(this.icon);
 
     console.log('BackChannel UI initialized');
   }

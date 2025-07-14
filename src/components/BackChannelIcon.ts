@@ -4,6 +4,8 @@
  * @author BackChannel Team
  */
 
+import { LitElement, html, css, TemplateResult } from 'lit';
+import { customElement, property, state } from 'lit/decorators.js';
 import { FeedbackState } from '../types';
 import { PackageCreationModal } from './PackageCreationModal';
 import { DatabaseService } from '../services/DatabaseService';
@@ -12,56 +14,225 @@ import { DatabaseService } from '../services/DatabaseService';
  * BackChannel Icon Component
  * Provides the main UI element for accessing BackChannel functionality
  */
-export class BackChannelIcon {
-  private element: HTMLElement;
-  private state: FeedbackState;
-  private clickHandler?: () => void;
-  private databaseService: DatabaseService;
+@customElement('backchannel-icon')
+export class BackChannelIcon extends LitElement {
+  @property({ type: Object })
+  databaseService!: DatabaseService;
+
+  @property({ type: String })
+  state: FeedbackState = FeedbackState.INACTIVE;
+
+  @property({ type: Function })
+  clickHandler?: () => void;
+
+  @state()
   private packageModal: PackageCreationModal | null = null;
 
-  constructor(databaseService: DatabaseService) {
-    this.databaseService = databaseService;
-    this.state = FeedbackState.INACTIVE;
-    this.element = this.createElement();
-    this.attachToDOM();
+  static styles = css`
+    :host {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 48px;
+      height: 48px;
+      background: #ffffff;
+      border: 2px solid #007acc;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      transition: all 0.3s ease;
+      z-index: 10000;
+      user-select: none;
+    }
+
+    :host(:hover) {
+      background: #f8f9fa;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      transform: translateY(-2px);
+    }
+
+    :host(:focus) {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(0, 122, 204, 0.3);
+    }
+
+    :host(:active) {
+      transform: translateY(0);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    /* State-based styling */
+    :host([state='inactive']) {
+      color: #6c757d;
+      border-color: #6c757d;
+    }
+
+    :host([state='inactive']) .backchannel-icon-badge {
+      fill: #6c757d;
+    }
+
+    :host([state='capture']) {
+      color: #007acc;
+      border-color: #007acc;
+      background: #e3f2fd;
+    }
+
+    :host([state='capture']) .backchannel-icon-badge {
+      fill: #007acc;
+    }
+
+    :host([state='review']) {
+      color: #28a745;
+      border-color: #28a745;
+      background: #e8f5e8;
+    }
+
+    :host([state='review']) .backchannel-icon-badge {
+      fill: #28a745;
+    }
+
+    /* Animation for state changes */
+    :host(.state-changing) {
+      animation: pulse 0.5s ease-in-out;
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.1);
+      }
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    /* Responsive positioning */
+    @media (max-width: 768px) {
+      :host {
+        top: 15px;
+        right: 15px;
+        width: 44px;
+        height: 44px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      :host {
+        top: 10px;
+        right: 10px;
+        width: 40px;
+        height: 40px;
+      }
+    }
+
+    /* Handle window resize and ensure icon stays visible */
+    @media (max-height: 400px) {
+      :host {
+        top: 10px;
+      }
+    }
+
+    /* Ensure icon doesn't interfere with page content */
+    svg {
+      pointer-events: none;
+    }
+
+    /* High contrast mode support */
+    @media (prefers-contrast: high) {
+      :host {
+        border-width: 3px;
+        box-shadow: 0 0 0 1px #000000;
+      }
+    }
+
+    /* Reduced motion support */
+    @media (prefers-reduced-motion: reduce) {
+      :host {
+        transition: none;
+      }
+
+      :host(:hover) {
+        transform: none;
+      }
+
+      :host(.state-changing) {
+        animation: none;
+      }
+    }
+
+    /* Print styles - hide icon when printing */
+    @media print {
+      :host {
+        display: none;
+      }
+    }
+  `;
+
+  connectedCallback() {
+    super.connectedCallback();
+    this.setAttribute('role', 'button');
+    this.setAttribute('tabindex', '0');
+    this.setAttribute('id', 'backchannel-icon');
+    this.updateTitle();
     this.initializeModal();
   }
 
-  /**
-   * Create the icon element with SVG
-   */
-  private createElement(): HTMLElement {
-    const iconContainer = document.createElement('div');
-    iconContainer.id = 'backchannel-icon';
-    iconContainer.className = 'backchannel-icon';
-    iconContainer.title = 'BackChannel Feedback';
-    iconContainer.setAttribute('role', 'button');
-    iconContainer.setAttribute('tabindex', '0');
-
-    // SVG icon for BackChannel
-    iconContainer.innerHTML = `
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M20 2H4C2.9 2 2 2.9 2 4V16C2 17.1 2.9 18 4 18H6L10 22L14 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" stroke="currentColor" stroke-width="2" fill="none"/>
-        <path d="M8 8H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        <path d="M8 12H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        <circle cx="18" cy="6" r="3" fill="currentColor" class="backchannel-icon-badge"/>
-      </svg>
-    `;
-
-    return iconContainer;
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this.cleanupModal();
   }
 
-  /**
-   * Attach the icon to the DOM
-   */
-  private attachToDOM(): void {
-    document.body.appendChild(this.element);
+  render(): TemplateResult {
+    return html`
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        @click=${this.handleClick}
+        @keydown=${this.handleKeydown}
+      >
+        <path
+          d="M20 2H4C2.9 2 2 2.9 2 4V16C2 17.1 2.9 18 4 18H6L10 22L14 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z"
+          stroke="currentColor"
+          stroke-width="2"
+          fill="none"
+        />
+        <path
+          d="M8 8H16"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+        />
+        <path
+          d="M8 12H16"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+        />
+        <circle
+          cx="18"
+          cy="6"
+          r="3"
+          fill="currentColor"
+          class="backchannel-icon-badge"
+        />
+      </svg>
+    `;
   }
 
   /**
    * Initialize the package creation modal
    */
   private initializeModal(): void {
+    if (!this.databaseService) return;
+
     this.packageModal = new PackageCreationModal();
     this.packageModal.databaseService = this.databaseService;
     this.packageModal.options = {
@@ -83,37 +254,43 @@ export class BackChannelIcon {
   }
 
   /**
-   * Set the icon state and update visual appearance
+   * Clean up modal
    */
-  setState(state: FeedbackState): void {
-    this.state = state;
-    this.updateAppearance();
+  private cleanupModal(): void {
+    if (this.packageModal && this.packageModal.parentNode) {
+      this.packageModal.parentNode.removeChild(this.packageModal);
+    }
   }
 
   /**
-   * Update the icon's visual appearance based on state
+   * Set the icon state and update visual appearance
    */
-  private updateAppearance(): void {
-    const icon = this.element;
+  setState(newState: FeedbackState): void {
+    this.state = newState;
+    this.setAttribute('state', newState);
+    this.updateTitle();
+    this.requestUpdate();
+  }
 
-    // Remove existing state classes
-    icon.classList.remove('inactive', 'capture', 'review');
+  /**
+   * Update the icon's title based on state
+   */
+  private updateTitle(): void {
+    let title = 'BackChannel Feedback';
 
-    // Add current state class
     switch (this.state) {
       case FeedbackState.INACTIVE:
-        icon.classList.add('inactive');
-        icon.title = 'BackChannel Feedback - Click to activate';
+        title = 'BackChannel Feedback - Click to activate';
         break;
       case FeedbackState.CAPTURE:
-        icon.classList.add('capture');
-        icon.title = 'BackChannel Feedback - Capture Mode Active';
+        title = 'BackChannel Feedback - Capture Mode Active';
         break;
       case FeedbackState.REVIEW:
-        icon.classList.add('review');
-        icon.title = 'BackChannel Feedback - Review Mode Active';
+        title = 'BackChannel Feedback - Review Mode Active';
         break;
     }
+
+    this.setAttribute('title', title);
   }
 
   /**
@@ -121,14 +298,6 @@ export class BackChannelIcon {
    */
   setClickHandler(handler: () => void): void {
     this.clickHandler = handler;
-
-    // Remove existing listeners
-    this.element.removeEventListener('click', this.handleClick);
-    this.element.removeEventListener('keydown', this.handleKeydown);
-
-    // Add new listeners
-    this.element.addEventListener('click', this.handleClick);
-    this.element.addEventListener('keydown', this.handleKeydown);
   }
 
   /**
@@ -158,35 +327,11 @@ export class BackChannelIcon {
   }
 
   /**
-   * Get the DOM element
-   */
-  getElement(): HTMLElement {
-    return this.element;
-  }
-
-  /**
    * Open the package creation modal
    */
   openPackageModal(): void {
     if (this.packageModal) {
       this.packageModal.show();
-    }
-  }
-
-  /**
-   * Remove the icon from the DOM
-   */
-  destroy(): void {
-    this.element.removeEventListener('click', this.handleClick);
-    this.element.removeEventListener('keydown', this.handleKeydown);
-
-    if (this.element.parentNode) {
-      this.element.parentNode.removeChild(this.element);
-    }
-
-    // Clean up modal
-    if (this.packageModal && this.packageModal.parentNode) {
-      this.packageModal.parentNode.removeChild(this.packageModal);
     }
   }
 }
