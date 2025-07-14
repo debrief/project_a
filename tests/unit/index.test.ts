@@ -27,9 +27,10 @@ describe('BackChannel Plugin', () => {
     // Check that plugin auto-initialized with default config
     const config = window.BackChannel.getConfig();
     expect(config.requireInitials).toBe(false);
-    expect(config.storageKey).toBe('backchannel-feedback');
+    expect(config.storageKey).toBeDefined();
     expect(config.targetSelector).toBe('.reviewable');
     expect(config.allowExport).toBe(true);
+    expect(config.debugMode).toBe(false);
   });
 
   it('should have inactive state after auto-initialization', async () => {
@@ -50,6 +51,7 @@ describe('BackChannel Plugin', () => {
       storageKey: 'test-key',
       targetSelector: '.test-class',
       allowExport: false,
+      debugMode: true,
     };
     
     // Reinitialize with custom config
@@ -60,6 +62,7 @@ describe('BackChannel Plugin', () => {
     expect(actualConfig.storageKey).toBe('test-key');
     expect(actualConfig.targetSelector).toBe('.test-class');
     expect(actualConfig.allowExport).toBe(false);
+    expect(actualConfig.debugMode).toBe(true);
   });
 
   it('should merge partial configuration with defaults when reinitialized', async () => {
@@ -76,7 +79,7 @@ describe('BackChannel Plugin', () => {
     
     const actualConfig = window.BackChannel.getConfig();
     expect(actualConfig.requireInitials).toBe(true);
-    expect(actualConfig.storageKey).toBe('backchannel-feedback');
+    expect(actualConfig.storageKey).toBeDefined();
     expect(actualConfig.targetSelector).toBe('.reviewable');
     expect(actualConfig.allowExport).toBe(true);
   });
@@ -91,7 +94,7 @@ describe('BackChannel Plugin', () => {
     
     const actualConfig = window.BackChannel.getConfig();
     expect(actualConfig.requireInitials).toBe(false);
-    expect(actualConfig.storageKey).toBe('backchannel-feedback');
+    expect(actualConfig.storageKey).toBeDefined();
     expect(actualConfig.targetSelector).toBe('.reviewable');
     expect(actualConfig.allowExport).toBe(true);
   });

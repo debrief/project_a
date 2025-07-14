@@ -5,21 +5,47 @@ class BackChannelPlugin {
   private state: FeedbackState;
 
   constructor() {
-    this.config = {};
+    this.config = this.getDefaultConfig();
     this.state = FeedbackState.INACTIVE;
+  }
+
+  /**
+   * Get default configuration for the plugin
+   */
+  private getDefaultConfig(): PluginConfig {
+    return {
+      requireInitials: false,
+      storageKey: this.generateStorageKey(),
+      targetSelector: '.reviewable',
+      allowExport: true,
+      debugMode: false,
+    };
+  }
+
+  /**
+   * Generate a storage key based on the current document URL
+   */
+  private generateStorageKey(): string {
+    if (typeof window !== 'undefined' && window.location) {
+      const url = new URL(window.location.href);
+      return `backchannel-${url.hostname}${url.pathname}`;
+    }
+    return 'backchannel-feedback';
   }
 
   init(config: PluginConfig = {}): void {
     this.config = {
-      requireInitials: false,
-      storageKey: 'backchannel-feedback',
-      targetSelector: '.reviewable',
-      allowExport: true,
+      ...this.getDefaultConfig(),
       ...config,
     };
 
     this.setupEventListeners();
-    console.log('BackChannel plugin initialized');
+
+    if (this.config.debugMode) {
+      console.log('BackChannel plugin initialized with config:', this.config);
+    } else {
+      console.log('BackChannel plugin initialized');
+    }
   }
 
   private setupEventListeners(): void {
