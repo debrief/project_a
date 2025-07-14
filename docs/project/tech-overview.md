@@ -52,7 +52,8 @@ backchannel/
 - Manages tooltips and highlights
 
 ### 2.3 `storage.ts`
-- Uses `localStorage` (fallback to `sessionStorage` if needed)
+- Uses `IndexedDb` for persistent data storage
+- Constructor takes optional `fakeIndexedDb` parameter.  In unit testing a fake indexedDb is provided, removing need to mock browser implementation.
 - Namespaced by document or manual config
 - CRUD for comment entries
 
@@ -71,10 +72,11 @@ backchannel/
 ## 3. Technologies & Tools
 
 - **Framework**: Vite, using Vanilla/Typescript template presets
+- **UI Library**: Lit (https://lit.dev/), to minimise creating web content in JS
 - **Language**: TypeScript (compiled to ES6 JavaScript)
 - **Bundler**: Rollup (single-file output, optional minification)
 - **CSS**: Inline or optional external stylesheet
-- **Testing**: Manual + Jest for utility units.  StoryBook V9 for UI reviews and testing, using a sample document.
+- **Testing**: Manual + Jest for utility units. Playwright for end-to-end testing, StoryBook V9 for UI reviews and testing, using a sample document.
 - **Linting**: ESLint + Prettier
 
 ---

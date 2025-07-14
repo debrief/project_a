@@ -30,9 +30,10 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
   4. Create project directory structure
   5. Configure build process for single-file output
   6. Set up Jest and Playwright for testing
-  7. Configure husky for pre-commit hooks to run tests
-  8. Initialize Git repository with initial commit
-  - **Guiding Notes**: Use Vite for bundling, configure for ES5-compatible output, ensure UMD/IIFE format
+  7. Create root-level `index.html` containing welcome content.
+  8. Provide initial Jest and Playwright tests that verify welcome page is being served correctly.
+  9. Configure husky for pre-commit hooks to run linter and tests
+- **Guiding Notes**: Use Vite for bundling, configure for ES5-compatible output, ensure UMD/IIFE format
 
 #### Task 1.2: Core Types & Interfaces
 - **Description**: Define the TypeScript interfaces and types for the application
@@ -50,7 +51,9 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
   1. Implement IndexedDB initialization and connection management
   2. Create CRUD operations for feedback packages and comments
   3. Implement localStorage caching for performance
-  4. Add error handling and fallbacks
+  4. Create utility that seeds JSON data into IndexedDB for testing, according to `docs/project/pre-populate-database.md`
+  5. Add error handling and fallbacks
+  6. Constructor should take optional fakeIndexedDb parameter.  In unit testing a fake indexedDb is provided, removing need to mock browser implementation. When provided, the fakeIndexedDb is used instead of browser IndexedDb
   - **Guiding Notes**: Use IndexedDB for primary storage, localStorage for caching, implement version checking
 
 ### Phase 2: Capture Mode - Core Functionality (Agent: UI Developer)
@@ -58,13 +61,16 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
 **Objective**: Implement the basic feedback capture functionality.
 
 #### Task 2.1: Plugin Initialization & Icon
-- **Description**: Create the entry point and BC icon functionality
+- **Description**: Create the entry point and BC icon functionality, included seeding database
 - **Assigned to**: UI Developer
 - **Action Steps**:
   1. Implement main plugin initialization after window.onload
-  2. Create BC icon with active/inactive states
-  3. Add icon positioning and styling
-  4. Implement click handlers for icon
+  2. Extend example index.html to handle seeding of database using `fakeData.ts`
+  3. Create BC icon with active/inactive states
+  4. Add icon positioning and styling
+  5. Implement click handlers for icon
+  6. Hook into page load to seed demo data if needed
+  7. Update e2e tests to verify BC icon is present and functional
   - **Guiding Notes**: Icon should be positioned top-right, use SVG for icon, handle window resize events
 
 #### Task 2.2: Feedback Package Creation
@@ -75,6 +81,7 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
   2. Implement form for document title, author name, URL prefix
   3. Add validation and error handling
   4. Connect to storage service for saving package data
+  5. Update e2e tests to verify package creation functionality
   - **Guiding Notes**: Modal should be accessible, form should validate inputs, provide clear feedback on success/failure
 
 #### Task 2.3: Capture Sidebar
@@ -83,8 +90,10 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
 - **Action Steps**:
   1. Create sidebar UI with toggle functionality
   2. Implement "Capture Feedback" and "Export" buttons
+  3. On "Capture Feedback", sidebar hidden, allowing reviewer to select element of content. Once clicked, sidebar returns.  A `Cancel selection` button is shown to top-right.
   3. Add comment list display in sidebar
   4. Implement sidebar state persistence
+  5. Update e2e tests to verify sidebar functionality, and that seeded database comments are displayed
   - **Guiding Notes**: Sidebar should be collapsible, use CSS transitions for smooth animations, persist state in localStorage
 
 #### Task 2.4: Element Selection & Highlighting
