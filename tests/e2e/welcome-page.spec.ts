@@ -66,6 +66,99 @@ test.describe('Welcome Page', () => {
     await expect(configElement).toContainText('requireInitials');
   });
 
+  test('should display BackChannel icon after initialization', async ({ page }) => {
+    // Wait for the script to load and auto-initialize
+    await page.waitForLoadState('networkidle');
+    
+    // Wait for plugin initialization
+    await page.waitForTimeout(500);
+    
+    // Check that the BackChannel icon is present
+    const icon = page.locator('#backchannel-icon');
+    await expect(icon).toBeVisible();
+    
+    // Check that the icon has the correct initial state
+    await expect(icon).toHaveClass(/inactive/);
+  });
+
+  test('should handle icon click and state changes', async ({ page }) => {
+    // Wait for the script to load and auto-initialize
+    await page.waitForLoadState('networkidle');
+    
+    // Wait for plugin initialization
+    await page.waitForTimeout(500);
+    
+    const icon = page.locator('#backchannel-icon');
+    await expect(icon).toBeVisible();
+    
+    // Initially should be inactive
+    await expect(icon).toHaveClass(/inactive/);
+    
+    // Click to change to capture state
+    await icon.click();
+    await expect(icon).toHaveClass(/capture/);
+    
+    // Click again to change to review state
+    await icon.click();
+    await expect(icon).toHaveClass(/review/);
+    
+    // Click once more to return to inactive
+    await icon.click();
+    await expect(icon).toHaveClass(/inactive/);
+  });
+
+  test('should verify demo database seeding', async ({ page }) => {
+    // Wait for the script to load and auto-initialize
+    await page.waitForLoadState('networkidle');
+    
+    // Wait for plugin initialization and seeding
+    await page.waitForTimeout(1000);
+    
+    // Check console logs for seeding confirmation
+    const consoleLogs = [];
+    page.on('console', msg => {
+      consoleLogs.push(msg.text());
+    });
+    
+    // Reload to trigger seeding again (if not already applied)
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1000);
+    
+    // Check if seeding messages appear in console
+    const hasSeeding = consoleLogs.some(log => 
+      log.includes('demo database seeding') || 
+      log.includes('seed version') ||
+      log.includes('Demo database seeding completed')
+    );
+    
+    expect(hasSeeding).toBeTruthy();
+  });
+
+  test('should position icon correctly on different screen sizes', async ({ page }) => {
+    // Wait for the script to load and auto-initialize
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(500);
+    
+    const icon = page.locator('#backchannel-icon');
+    await expect(icon).toBeVisible();
+    
+    // Test desktop size
+    await page.setViewportSize({ width: 1200, height: 800 });
+    await expect(icon).toHaveCSS('top', '20px');
+    await expect(icon).toHaveCSS('right', '20px');
+    
+    // Test tablet size
+    await page.setViewportSize({ width: 768, height: 600 });
+    await expect(icon).toHaveCSS('top', '15px');
+    await expect(icon).toHaveCSS('right', '15px');
+    
+    // Test mobile size
+    await page.setViewportSize({ width: 480, height: 600 });
+    await expect(icon).toHaveCSS('top', '10px');
+    await expect(icon).toHaveCSS('right', '10px');
+  });
+
   test('should handle missing plugin gracefully', async ({ page }) => {
     // Remove the script tag to simulate missing plugin
     await page.evaluate(() => {

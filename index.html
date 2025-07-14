@@ -130,19 +130,56 @@
         </div>
     </div>
 
+    <script>
+        // Demo database seed data
+        window.demoDatabaseSeed = {
+            version: 'demo-v1',
+            metadata: {
+                documentTitle: 'BackChannel Demo Document',
+                documentRootUrl: 'file://',
+                documentId: 'demo-001',
+                reviewer: 'Demo User'
+            },
+            comments: [
+                {
+                    id: 'demo-comment-001',
+                    text: 'This is a sample comment for the welcome section.',
+                    pageUrl: window.location.href,
+                    timestamp: new Date().toISOString(),
+                    location: '/html/body/div[1]/h1',
+                    snippet: 'Welcome to BackChannel',
+                    author: 'Demo User'
+                },
+                {
+                    id: 'demo-comment-002',
+                    text: 'Another demo comment showing multi-comment support.',
+                    pageUrl: window.location.href,
+                    timestamp: new Date().toISOString(),
+                    location: '/html/body/div[1]/div[1]/h3',
+                    snippet: 'Sample Document Section',
+                    author: 'Demo User'
+                }
+            ]
+        };
+    </script>
     <script src="dist/backchannel.js"></script>
     <script>
         // Optional: Demo function to show reinitialization capability
-        function reinitializePlugin() {
-            window.BackChannel.init({
-                requireInitials: true,
-                storageKey: 'backchannel-demo-custom',
-                targetSelector: '.reviewable',
-                allowExport: true
-            });
-            
-            updatePluginInfo();
-            alert('Plugin reinitialized with custom configuration!');
+        async function reinitializePlugin() {
+            try {
+                await window.BackChannel.init({
+                    requireInitials: true,
+                    storageKey: 'backchannel-demo-custom',
+                    targetSelector: '.reviewable',
+                    allowExport: true
+                });
+                
+                updatePluginInfo();
+                alert('Plugin reinitialized with custom configuration!');
+            } catch (error) {
+                console.error('Failed to reinitialize plugin:', error);
+                alert('Failed to reinitialize plugin. Check console for details.');
+            }
         }
 
         // Display current plugin state and configuration
