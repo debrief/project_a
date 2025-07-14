@@ -31,7 +31,7 @@ Each comment contains:
 In addition, the overall database stores metadata for the document under review:
 
 - `documentTitle`
-- `documentRootUrl` (shared URL prefix for the document set)
+- `documentRootUrl` (shared URL prefix for the document set, defaults to parent folder of the document where package was created)
 
 ### Review Mode (`ReviewComment`)
 In review mode, comments are extended with additional fields:
@@ -47,6 +47,7 @@ The schema explicitly supports extending `CaptureComment` into `ReviewComment` v
 
 - Data is stored in **IndexedDB**, using one database per document under review.
 - A single document may span multiple pages; all pages under the same root URL share a database.
+- The root URL defaults to the parent folder of the document where the feedback package was created, automatically matching all documents "beneath" it in the folder tree.
 - Each database includes a `comments` store (array of feedback comments) and a `metadata` entry (document title and root path).
 - Data is persisted as soon as a comment is added or saved.
 

@@ -60,6 +60,7 @@ interface PackageCreationForm {
    - Real-time validation as user types
    - Clear error message display
    - Prevent submission with invalid data
+   - Auto-populate URL prefix with parent folder of current document
 
 3. **Database Integration**
    - Connect form submission to DatabaseService
