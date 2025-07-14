@@ -110,7 +110,7 @@ test.describe('Welcome Page', () => {
     await page.waitForTimeout(1000);
     
     // Check console logs for seeding confirmation
-    const consoleLogs = [];
+    const consoleLogs: string[] = [];
     page.on('console', msg => {
       consoleLogs.push(msg.text());
     });
