@@ -12,7 +12,7 @@
 
 **Reference Implementation Plan:** This assignment corresponds to `Phase 1, Task 1.3: Storage Service Implementation` in the Implementation_Plan.md.
 
-**Objective:** Create the IndexedDB wrapper for data persistence, including database initialization, CRUD operations, localStorage caching, demo data seeding utility, and comprehensive error handling.
+**Objective:** Create the IndexedDB wrapper for data persistence, including database initialization, CRUD operations, minimal localStorage caching of identifiers, demo data seeding utility, and comprehensive error handling.
 
 **Detailed Action Steps:**
 
@@ -26,10 +26,10 @@
    - Add operations for DocumentMetadata management
    - Ensure all operations use the TypeScript interfaces from Task 1.2 (CaptureComment, DocumentMetadata, StorageInterface)
 
-3. **Implement localStorage caching for performance**
-   - **Guidance:** Use localStorage for caching of database id and document URL root as specified in the Implementation Plan
-   - Create caching layer to reduce IndexedDB query frequency for frequently accessed data
-   - Implement cache invalidation strategies
+3. **Implement localStorage caching of database id and document URL root**
+   - **Guidance:** Use localStorage for caching of database id and document URL root, to quickly determine if a newly loaded page already has a feedback page
+   - Store minimal metadata in localStorage to avoid repeated IndexedDB queries for basic page identification
+   - Focus on caching only essential identifiers, not full data sets
 
 4. **Create utility that seeds JSON data into IndexedDB for later UI testing**
    - **Guidance:** Follow the requirements in `docs/project/pre-populate-database.md` for versioned seeding
@@ -59,7 +59,7 @@
 
 **Define Success:** Successful completion requires a fully functional DatabaseService that:
 - Handles IndexedDB operations reliably with proper error handling
-- Implements localStorage caching for performance
+- Implements minimal localStorage caching of database id and document URL root
 - Supports versioned demo data seeding without data loss
 - Works with both real and fake IndexedDB for testing
 - Passes all unit tests and integrates properly with existing types
@@ -81,7 +81,7 @@ Upon successful completion of this task, you **must** log your work comprehensiv
 - A reference to Task 1.3 in Phase 1 of the Implementation Plan
 - A clear description of the actions taken and architecture decisions
 - Code snippets for key implementations (DatabaseService class structure, seeding utility)
-- Any key decisions made regarding IndexedDB schema, caching strategy, or error handling
+- Any key decisions made regarding IndexedDB schema, minimal caching approach, or error handling
 - Confirmation of successful execution including test results and build verification
 - Documentation of the seeding mechanism and how it prevents data loss
 
