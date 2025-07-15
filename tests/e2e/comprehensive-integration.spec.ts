@@ -5,7 +5,41 @@
  * @author BackChannel Team
  */
 
+/// <reference path="./types.d.ts" />
+
 import { test, expect, Page } from '@playwright/test';
+
+/**
+ * Define a comprehensive interface for our debug info object
+ */
+interface DebugInfo {
+  backChannelExists: boolean;
+  state: any;
+  currentUrl: string;
+  demoDataExists?: boolean;
+  demoDataVersion?: any;
+  demoDataDocumentRootUrl?: any;
+  fakeDataExists?: boolean;
+  fakeDataDbName?: any;
+  iconCount?: number;
+  isEnabled?: any;
+  hasInitMethod?: boolean;
+  hasGetStateMethod?: boolean;
+  hasIsEnabledProp?: boolean;
+  databaseServiceExists?: boolean;
+  actualDbName?: string;
+  actualDbVersion?: number;
+  enabledCheckResult?: boolean;
+  storedMetadata?: any;
+  storedCommentCount?: number;
+  enabledCheckError?: string;
+  databaseServiceMissing?: boolean;
+  backChannelMissing?: boolean;
+  seedVersionInStorage?: string | null;
+  enabledStateInStorage?: string | null;
+  storageError?: string;
+  databaseError?: string;
+}
 
 /**
  * Helper to clear all browser storage and databases
@@ -68,7 +102,7 @@ test.describe('BackChannel Comprehensive Integration Tests', () => {
   test.describe('Database Setup and Seeding', () => {
     test('should seed database correctly when fake data is present', async ({ page }) => {
       // Set up console log collection BEFORE navigation
-      const logs = [];
+      const logs: string[] = [];
       page.on('console', msg => logs.push(msg.text()));
       
       // Navigate to a page with fake data
@@ -93,7 +127,7 @@ test.describe('BackChannel Comprehensive Integration Tests', () => {
 
     test('should not attempt seeding when version is already applied', async ({ page }) => {
       // Set up console log collection BEFORE navigation
-      const logs = [];
+      const logs: string[] = [];
       page.on('console', msg => logs.push(msg.text()));
       
       // Navigate to enabled page (which will seed)
@@ -118,8 +152,8 @@ test.describe('BackChannel Comprehensive Integration Tests', () => {
   test.describe('URL-based Enabled/Disabled Detection', () => {
     test('should enable BackChannel on pages matching feedback package URL pattern', async ({ page }) => {
       // Set up console log and error collection
-      const logs = [];
-      const errors = [];
+      const logs: string[] = [];
+      const errors: string[] = [];
       page.on('console', msg => {
         logs.push(msg.text());
         if (msg.type() === 'error') {
@@ -134,12 +168,12 @@ test.describe('BackChannel Comprehensive Integration Tests', () => {
       // Wait for the window 'load' event to ensure BackChannel auto-initializes
       await page.waitForLoadState('load');
       
-      // Wait a bit longer for UI initialization
-      await page.waitForTimeout(4000);
+      // Wait for the icon to be rendered, which indicates UI is ready
+      await page.waitForFunction(() => document.querySelector('backchannel-icon'), { timeout: 10000 });
       
       // Debug: Check BackChannel state and database configuration
-      const debugInfo = await page.evaluate(async () => {
-        const info = {
+      const debugInfo: DebugInfo = await page.evaluate(async () => {
+        const info: DebugInfo = {
           backChannelExists: !!window.BackChannel,
           state: window.BackChannel ? window.BackChannel.getState() : 'NOT_FOUND',
           currentUrl: window.location.href,
@@ -223,7 +257,7 @@ test.describe('BackChannel Comprehensive Integration Tests', () => {
 
     test('should disable BackChannel on pages NOT matching feedback package URL pattern', async ({ page }) => {
       // Set up console log collection
-      const logs = [];
+      const logs: string[] = [];
       page.on('console', msg => logs.push(msg.text()));
       
       // Navigate to disabled section
@@ -235,8 +269,8 @@ test.describe('BackChannel Comprehensive Integration Tests', () => {
       await page.waitForTimeout(2000);
       
       // Debug: Check BackChannel state
-      const debugInfo = await page.evaluate(async () => {
-        const info = {
+      const debugInfo: DebugInfo = await page.evaluate(async () => {
+        const info: DebugInfo = {
           currentUrl: window.location.href,
           backChannelExists: !!window.BackChannel,
           state: window.BackChannel ? window.BackChannel.getState() : 'NOT_FOUND',
@@ -377,7 +411,7 @@ test.describe('BackChannel Comprehensive Integration Tests', () => {
   test.describe('URL Pattern Matching Edge Cases', () => {
     test('should handle different port numbers correctly', async ({ page }) => {
       // Set up console logging BEFORE navigation
-      const logs = [];
+      const logs: string[] = [];
       page.on('console', msg => logs.push(msg.text()));
       
       // Navigate to enabled section
@@ -413,7 +447,7 @@ test.describe('BackChannel Comprehensive Integration Tests', () => {
       await waitForBackChannelInit(page);
       
       // Check if it's correctly enabled for file:// URLs
-      const logs = [];
+      const logs: string[] = [];
       page.on('console', msg => logs.push(msg.text()));
       
       // Trigger seeding which should create file:// pattern
