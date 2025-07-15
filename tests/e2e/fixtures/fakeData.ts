@@ -11,7 +11,7 @@ import { DemoDatabaseSeed } from '../../../src/utils/seedDemoDatabase';
  * This structure should be injected into window.demoDatabaseSeed
  */
 export const sampleDemoSeed: DemoDatabaseSeed = {
-  version: 'demo-v1',
+  version: 'demo-v1a',
   metadata: {
     documentTitle: 'Sample Document for Testing',
     documentRootUrl: 'file://',

@@ -231,6 +231,7 @@ export class DatabaseService implements StorageInterface {
 
       // Check if any metadata entry has a URL root that matches the current URL
       for (const metadata of allMetadata) {
+        console.log('this root is', metadata, metadata);
         if (currentUrl.startsWith(metadata.documentRootUrl)) {
           console.log('Found matching URL root:', metadata.documentRootUrl);
           return true;

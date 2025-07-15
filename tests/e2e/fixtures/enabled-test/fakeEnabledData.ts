@@ -17,7 +17,7 @@ export const fakeData: FakeDbStore = {
   version: 1,
   databases: [
     {
-      name: 'BackChannelDB',
+      name: 'BackChannelDB-EnabledTest',
       version: 1,
       objectStores: [
         {
@@ -26,7 +26,7 @@ export const fakeData: FakeDbStore = {
           data: [
             {
               documentTitle: 'Enabled Test Package',
-              documentRootUrl: 'http://localhost:5173/tests/e2e/fixtures/enabled-test/enabled/',
+              documentRootUrl: 'http://localhost:3000/tests/e2e/fixtures/enabled-test/enabled',
               documentId: 'pkg-1234567890',
               reviewer: 'Test Author 1',
             },
