@@ -120,8 +120,6 @@ export interface StorageInterface {
   updateComment(id: string, updates: Partial<CaptureComment>): Promise<void>;
   /** Delete a comment */
   deleteComment(id: string): Promise<void>;
-  /** Clear all data */
-  clear(): Promise<void>;
 }
 
 /**
@@ -195,4 +193,14 @@ export interface FakeObjectStore {
   keyPath: string;
   /** Data items in the object store */
   data: unknown[];
+}
+
+/**
+ * Defines the public API for the global BackChannel object
+ */
+export interface BackChannelGlobal {
+  init: (config?: PluginConfig) => Promise<void>;
+  getState: () => FeedbackState;
+  getConfig: () => PluginConfig;
+  enableBackChannel: () => Promise<void>;
 }
