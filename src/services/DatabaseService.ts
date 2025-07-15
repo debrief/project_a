@@ -1,6 +1,6 @@
 /**
  * @fileoverview DatabaseService - IndexedDB wrapper for BackChannel data persistence
- * @version 1.0.0
+ * @version 2.0.0
  * @author BackChannel Team
  */
 
@@ -25,14 +25,13 @@ const METADATA_STORE = 'metadata';
 const CACHE_KEYS = {
   DATABASE_ID: 'backchannel-db-id',
   DOCUMENT_URL_ROOT: 'backchannel-url-root',
-  SEED_VERSION: 'backchannel-seed-version',
   ENABLED_STATE: 'backchannel-enabled-state',
   LAST_URL_CHECK: 'backchannel-last-url-check',
 } as const;
 
 /**
  * DatabaseService provides IndexedDB operations for BackChannel feedback data
- * Implements minimal localStorage caching of database id and document URL root
+ * Implements minimal localStorage caching for performance optimization
  */
 export class DatabaseService implements StorageInterface {
   private db: IDBDatabase | null = null;
@@ -42,7 +41,8 @@ export class DatabaseService implements StorageInterface {
   private readonly dbVersion: number;
 
   /**
-   * @param fakeIndexedDb Optional fake IndexedDB implementation for testing
+   * Creates a new DatabaseService instance with optional configuration
+   * @param fakeIndexedDb Optional mock IndexedDB implementation for testing
    * @param dbName Optional database name (defaults to 'BackChannelDB')
    * @param dbVersion Optional database version (defaults to 1)
    */
@@ -53,7 +53,8 @@ export class DatabaseService implements StorageInterface {
   }
 
   /**
-   * Initialize the database connection
+   * Initializes the IndexedDB database connection and sets up object stores
+   * @throws Error if IndexedDB is not supported or database cannot be opened
    */
   async initialize(): Promise<void> {
     if (this.isInitialized && this.db) {
@@ -72,7 +73,7 @@ export class DatabaseService implements StorageInterface {
   }
 
   /**
-   * Open IndexedDB database with proper schema setup
+   * Opens IndexedDB database with proper schema setup
    */
   private openDatabase(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
@@ -104,37 +105,30 @@ export class DatabaseService implements StorageInterface {
   }
 
   /**
-   * Set up database schema with object stores
+   * Sets up database schema with object stores
    */
   private setupDatabase(db: IDBDatabase): void {
-    try {
-      // Comments object store
-      if (!db.objectStoreNames.contains(COMMENTS_STORE)) {
-        const commentsStore = db.createObjectStore(COMMENTS_STORE, {
-          keyPath: 'id',
-        });
-        commentsStore.createIndex('pageUrl', 'pageUrl', { unique: false });
-        commentsStore.createIndex('timestamp', 'timestamp', { unique: false });
-        console.log('Comments store created');
-      }
+    console.log('Setting up database schema');
 
-      // Metadata object store
-      if (!db.objectStoreNames.contains(METADATA_STORE)) {
-        db.createObjectStore(METADATA_STORE, {
-          keyPath: 'documentRootUrl',
-        });
-        console.log('Metadata store created');
-      }
+    // Create metadata store
+    if (!db.objectStoreNames.contains(METADATA_STORE)) {
+      db.createObjectStore(METADATA_STORE, {
+        keyPath: 'documentRootUrl',
+      });
+      console.log('Created metadata object store');
+    }
 
-      console.log('Database schema setup completed');
-    } catch (error) {
-      console.error('Error setting up database schema:', error);
-      throw error;
+    // Create comments store
+    if (!db.objectStoreNames.contains(COMMENTS_STORE)) {
+      db.createObjectStore(COMMENTS_STORE, {
+        keyPath: 'id',
+      });
+      console.log('Created comments object store');
     }
   }
 
   /**
-   * Cache basic information to localStorage for quick access
+   * Caches basic information to localStorage for quick access
    */
   private cacheBasicInfo(): void {
     try {
@@ -151,66 +145,204 @@ export class DatabaseService implements StorageInterface {
   }
 
   /**
-   * Check if BackChannel should be enabled for the current page
-   * Uses localStorage cache first, then falls back to database scan
+   * Retrieves document metadata from the database
+   * @returns DocumentMetadata object or null if no metadata exists
    */
-  async isBackChannelEnabled(): Promise<boolean> {
-    try {
-      const currentUrl = this.getCurrentPageUrl();
-      const cachedEnabledState = localStorage.getItem(CACHE_KEYS.ENABLED_STATE);
-      const cachedUrlRoot = localStorage.getItem(CACHE_KEYS.DOCUMENT_URL_ROOT);
-      const lastUrlCheck = localStorage.getItem(CACHE_KEYS.LAST_URL_CHECK);
-
-      // Fast path: check if cache is valid for current URL
-      if (cachedEnabledState !== null && cachedUrlRoot && lastUrlCheck) {
-        const lastCheckTime = parseInt(lastUrlCheck, 10);
-        const cacheAge = Date.now() - lastCheckTime;
-        const cacheValidDuration = 5 * 60 * 1000; // 5 minutes
-
-        if (
-          cacheAge < cacheValidDuration &&
-          currentUrl.startsWith(cachedUrlRoot)
-        ) {
-          console.log(
-            'BackChannel enabled state from cache:',
-            cachedEnabledState === 'true'
-          );
-          return cachedEnabledState === 'true';
-        }
-      }
-
-      // Slow path: scan database for matching URL root
-      const enabled = await this.scanDatabaseForUrlMatch(currentUrl);
-
-      // Update cache
-      if (enabled) {
-        const metadata = await this.getMetadata();
-        if (metadata) {
-          localStorage.setItem(CACHE_KEYS.ENABLED_STATE, 'true');
-          localStorage.setItem(
-            CACHE_KEYS.DOCUMENT_URL_ROOT,
-            metadata.documentRootUrl
-          );
-          localStorage.setItem(
-            CACHE_KEYS.LAST_URL_CHECK,
-            Date.now().toString()
-          );
-        }
-      } else {
-        localStorage.setItem(CACHE_KEYS.ENABLED_STATE, 'false');
-        localStorage.setItem(CACHE_KEYS.LAST_URL_CHECK, Date.now().toString());
-      }
-
-      console.log('BackChannel enabled state determined:', enabled);
-      return enabled;
-    } catch (error) {
-      console.error('Error determining BackChannel enabled state:', error);
-      return false;
+  async getMetadata(): Promise<DocumentMetadata | null> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
     }
+
+    return this.executeTransaction(
+      [METADATA_STORE],
+      'readonly',
+      async transaction => {
+        const store = transaction.objectStore(METADATA_STORE);
+        return new Promise<DocumentMetadata | null>((resolve, reject) => {
+          const request = store.getAll();
+          request.onsuccess = () => {
+            const results = request.result;
+            resolve(results.length > 0 ? results[0] : null);
+          };
+          request.onerror = () => reject(request.error);
+        });
+      }
+    );
   }
 
   /**
-   * Scan all metadata entries in the database to find a matching URL root
+   * Stores document metadata in the database
+   * @param metadata Document metadata object containing title, URL root, ID, and reviewer
+   */
+  async setMetadata(metadata: DocumentMetadata): Promise<void> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+
+    return this.executeTransaction(
+      [METADATA_STORE],
+      'readwrite',
+      async transaction => {
+        const store = transaction.objectStore(METADATA_STORE);
+        return new Promise<void>((resolve, reject) => {
+          const request = store.put(metadata);
+          request.onsuccess = () => resolve();
+          request.onerror = () => reject(request.error);
+        });
+      }
+    );
+  }
+
+  /**
+   * Retrieves all comments from the database
+   * @returns Array of CaptureComment objects
+   */
+  async getComments(): Promise<CaptureComment[]> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+
+    return this.executeTransaction(
+      [COMMENTS_STORE],
+      'readonly',
+      async transaction => {
+        const store = transaction.objectStore(COMMENTS_STORE);
+        return new Promise<CaptureComment[]>((resolve, reject) => {
+          const request = store.getAll();
+          request.onsuccess = () => {
+            const results = request.result || [];
+            resolve(results.filter(isCaptureComment));
+          };
+          request.onerror = () => reject(request.error);
+        });
+      }
+    );
+  }
+
+  /**
+   * Adds a new comment to the database
+   * @param comment Complete comment object with ID, text, location, timestamp, etc.
+   */
+  async addComment(comment: CaptureComment): Promise<void> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+
+    return this.executeTransaction(
+      [COMMENTS_STORE],
+      'readwrite',
+      async transaction => {
+        const store = transaction.objectStore(COMMENTS_STORE);
+        return new Promise<void>((resolve, reject) => {
+          const request = store.add(comment);
+          request.onsuccess = () => resolve();
+          request.onerror = () => reject(request.error);
+        });
+      }
+    );
+  }
+
+  /**
+   * Updates an existing comment in the database
+   * @param id Comment ID to update
+   * @param updates Partial comment object with fields to update
+   */
+  async updateComment(
+    id: string,
+    updates: Partial<CaptureComment>
+  ): Promise<void> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+
+    return this.executeTransaction(
+      [COMMENTS_STORE],
+      'readwrite',
+      async transaction => {
+        const store = transaction.objectStore(COMMENTS_STORE);
+        return new Promise<void>((resolve, reject) => {
+          const getRequest = store.get(id);
+          getRequest.onsuccess = () => {
+            const existingComment = getRequest.result;
+            if (!existingComment) {
+              reject(new Error(`Comment with ID ${id} not found`));
+              return;
+            }
+
+            const updatedComment = { ...existingComment, ...updates };
+            const putRequest = store.put(updatedComment);
+            putRequest.onsuccess = () => resolve();
+            putRequest.onerror = () => reject(putRequest.error);
+          };
+          getRequest.onerror = () => reject(getRequest.error);
+        });
+      }
+    );
+  }
+
+  /**
+   * Deletes a comment from the database
+   * @param id Comment ID to delete
+   */
+  async deleteComment(id: string): Promise<void> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+
+    return this.executeTransaction(
+      [COMMENTS_STORE],
+      'readwrite',
+      async transaction => {
+        const store = transaction.objectStore(COMMENTS_STORE);
+        return new Promise<void>((resolve, reject) => {
+          const request = store.delete(id);
+          request.onsuccess = () => resolve();
+          request.onerror = () => reject(request.error);
+        });
+      }
+    );
+  }
+
+  /**
+   * Determines if BackChannel should be enabled for the current page
+   * Uses localStorage caching for performance with URL-based invalidation
+   * @returns true if current URL matches any stored document root URL
+   */
+  async isBackChannelEnabled(): Promise<boolean> {
+    const currentUrl = this.getCurrentPageUrl();
+
+    // Fast path: check localStorage cache
+    try {
+      const cachedEnabledState = localStorage.getItem(CACHE_KEYS.ENABLED_STATE);
+      const lastUrlCheck = localStorage.getItem(CACHE_KEYS.LAST_URL_CHECK);
+
+      if (cachedEnabledState !== null && lastUrlCheck === currentUrl) {
+        console.log(
+          'Using cached enabled state:',
+          cachedEnabledState === 'true'
+        );
+        return cachedEnabledState === 'true';
+      }
+    } catch (error) {
+      console.warn('Failed to check cached enabled state:', error);
+    }
+
+    // Slow path: scan database for URL matches
+    const isEnabled = await this.scanDatabaseForUrlMatch(currentUrl);
+
+    // Cache the result
+    try {
+      localStorage.setItem(CACHE_KEYS.ENABLED_STATE, isEnabled.toString());
+      localStorage.setItem(CACHE_KEYS.LAST_URL_CHECK, currentUrl);
+    } catch (error) {
+      console.warn('Failed to cache enabled state:', error);
+    }
+
+    return isEnabled;
+  }
+
+  /**
+   * Scans database for URL matches to determine enabled state
    */
   private async scanDatabaseForUrlMatch(currentUrl: string): Promise<boolean> {
     if (!this.db) {
@@ -237,7 +369,6 @@ export class DatabaseService implements StorageInterface {
 
       // Check if any metadata entry has a URL root that matches the current URL
       for (const metadata of allMetadata) {
-        console.log('this root is', metadata, metadata);
         if (currentUrl.startsWith(metadata.documentRootUrl)) {
           console.log('Found matching URL root:', metadata.documentRootUrl);
           return true;
@@ -253,17 +384,8 @@ export class DatabaseService implements StorageInterface {
   }
 
   /**
-   * Get the current page URL
-   */
-  private getCurrentPageUrl(): string {
-    if (typeof window !== 'undefined' && window.location) {
-      return window.location.href;
-    }
-    return '';
-  }
-
-  /**
-   * Clear the enabled state cache
+   * Clears the cached enabled state to force re-evaluation
+   * Called after successful package creation to ensure enabled state reflects new data
    */
   clearEnabledStateCache(): void {
     try {
@@ -276,328 +398,64 @@ export class DatabaseService implements StorageInterface {
   }
 
   /**
-   * Get document URL root from current location
+   * Gets the current page URL for enabled/disabled detection
+   * @returns Current window location as string
+   */
+  getCurrentPageUrl(): string {
+    if (typeof window !== 'undefined' && window.location) {
+      return window.location.href;
+    }
+    return '';
+  }
+
+  /**
+   * Extracts document root URL from current page for caching
+   * @returns Base URL path for document identification
    */
   private getDocumentUrlRoot(): string {
     if (typeof window !== 'undefined' && window.location) {
       const url = new URL(window.location.href);
-      return `${url.protocol}//${url.hostname}${url.port ? ':' + url.port : ''}`;
+      return `${url.protocol}//${url.hostname}${url.port ? ':' + url.port : ''}${url.pathname}`;
     }
-    return 'file://';
+    return '';
   }
 
   /**
-   * Check if page already has feedback based on cached info
-   */
-  hasExistingFeedback(): boolean {
-    try {
-      const cachedDbId = localStorage.getItem(CACHE_KEYS.DATABASE_ID);
-      const cachedUrlRoot = localStorage.getItem(CACHE_KEYS.DOCUMENT_URL_ROOT);
-      const currentUrlRoot = this.getDocumentUrlRoot();
-
-      return cachedDbId !== null && cachedUrlRoot === currentUrlRoot;
-    } catch (error) {
-      console.warn('Failed to check existing feedback:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Ensure database is initialized before operations
-   */
-  private async ensureInitialized(): Promise<void> {
-    if (!this.isInitialized || !this.db) {
-      await this.initialize();
-    }
-  }
-
-  /**
-   * Execute a transaction with proper error handling
+   * Executes a database transaction with error handling
    */
   private executeTransaction<T>(
-    storeNames: string | string[],
+    storeNames: string[],
     mode: IDBTransactionMode,
     operation: (transaction: IDBTransaction) => Promise<T>
   ): Promise<T> {
     return new Promise((resolve, reject) => {
-      this.ensureInitialized()
-        .then(() => {
-          if (!this.db) {
-            reject(new Error('Database not available'));
-            return;
-          }
+      if (!this.db) {
+        reject(new Error('Database not initialized'));
+        return;
+      }
 
-          try {
-            const transaction = this.db.transaction(storeNames, mode);
+      const transaction = this.db.transaction(storeNames, mode);
 
-            transaction.onerror = () => {
-              console.error('Transaction error:', transaction.error);
-              reject(transaction.error);
-            };
+      transaction.oncomplete = () => {
+        // Transaction completed successfully
+      };
 
-            transaction.onabort = () => {
-              console.error('Transaction aborted');
-              reject(new Error('Transaction aborted'));
-            };
+      transaction.onerror = () => {
+        console.error('Transaction error:', transaction.error);
+        reject(transaction.error);
+      };
 
-            operation(transaction)
-              .then(result => resolve(result))
-              .catch(error => reject(error));
-          } catch (error) {
-            console.error('Transaction execution error:', error);
-            reject(error);
-          }
-        })
-        .catch(error => reject(error));
+      transaction.onabort = () => {
+        console.error('Transaction aborted');
+        reject(new Error('Transaction aborted'));
+      };
+
+      try {
+        operation(transaction).then(resolve).catch(reject);
+      } catch (error) {
+        console.error('Transaction execution error:', error);
+        reject(error);
+      }
     });
-  }
-
-  /**
-   * Get document metadata from storage
-   */
-  async getMetadata(): Promise<DocumentMetadata | null> {
-    return this.executeTransaction(
-      METADATA_STORE,
-      'readonly',
-      async transaction => {
-        const store = transaction.objectStore(METADATA_STORE);
-        const urlRoot = this.getDocumentUrlRoot();
-
-        return new Promise<DocumentMetadata | null>((resolve, reject) => {
-          const request = store.get(urlRoot);
-
-          request.onsuccess = () => {
-            const result = request.result;
-            console.log('Metadata retrieved:', result ? 'found' : 'not found');
-            resolve(result || null);
-          };
-
-          request.onerror = () => {
-            console.error('Failed to get metadata:', request.error);
-            reject(request.error);
-          };
-        });
-      }
-    );
-  }
-
-  /**
-   * Set document metadata in storage
-   */
-  async setMetadata(metadata: DocumentMetadata): Promise<void> {
-    return this.executeTransaction(
-      METADATA_STORE,
-      'readwrite',
-      async transaction => {
-        const store = transaction.objectStore(METADATA_STORE);
-
-        return new Promise<void>((resolve, reject) => {
-          const request = store.put(metadata);
-
-          request.onsuccess = () => {
-            console.log('Metadata saved successfully');
-            resolve();
-          };
-
-          request.onerror = () => {
-            console.error('Failed to save metadata:', request.error);
-            reject(request.error);
-          };
-        });
-      }
-    );
-  }
-
-  /**
-   * Get all comments from storage
-   */
-  async getComments(): Promise<CaptureComment[]> {
-    return this.executeTransaction(
-      COMMENTS_STORE,
-      'readonly',
-      async transaction => {
-        const store = transaction.objectStore(COMMENTS_STORE);
-
-        return new Promise<CaptureComment[]>((resolve, reject) => {
-          const request = store.getAll();
-
-          request.onsuccess = () => {
-            const comments = request.result.filter(isCaptureComment);
-            console.log(`Retrieved ${comments.length} comments from storage`);
-            resolve(comments);
-          };
-
-          request.onerror = () => {
-            console.error('Failed to get comments:', request.error);
-            reject(request.error);
-          };
-        });
-      }
-    );
-  }
-
-  /**
-   * Add a new comment to storage
-   */
-  async addComment(comment: CaptureComment): Promise<void> {
-    if (!isCaptureComment(comment)) {
-      throw new Error('Invalid comment format');
-    }
-
-    return this.executeTransaction(
-      COMMENTS_STORE,
-      'readwrite',
-      async transaction => {
-        const store = transaction.objectStore(COMMENTS_STORE);
-
-        return new Promise<void>((resolve, reject) => {
-          const request = store.add(comment);
-
-          request.onsuccess = () => {
-            console.log(`Comment added successfully: ${comment.id}`);
-            resolve();
-          };
-
-          request.onerror = () => {
-            console.error('Failed to add comment:', request.error);
-            reject(request.error);
-          };
-        });
-      }
-    );
-  }
-
-  /**
-   * Update an existing comment in storage
-   */
-  async updateComment(
-    id: string,
-    updates: Partial<CaptureComment>
-  ): Promise<void> {
-    return this.executeTransaction(
-      COMMENTS_STORE,
-      'readwrite',
-      async transaction => {
-        const store = transaction.objectStore(COMMENTS_STORE);
-
-        return new Promise<void>((resolve, reject) => {
-          const getRequest = store.get(id);
-
-          getRequest.onsuccess = () => {
-            const existingComment = getRequest.result;
-
-            if (!existingComment) {
-              reject(new Error(`Comment with id ${id} not found`));
-              return;
-            }
-
-            const updatedComment = { ...existingComment, ...updates };
-
-            if (!isCaptureComment(updatedComment)) {
-              reject(new Error('Updated comment format is invalid'));
-              return;
-            }
-
-            const putRequest = store.put(updatedComment);
-
-            putRequest.onsuccess = () => {
-              console.log(`Comment updated successfully: ${id}`);
-              resolve();
-            };
-
-            putRequest.onerror = () => {
-              console.error('Failed to update comment:', putRequest.error);
-              reject(putRequest.error);
-            };
-          };
-
-          getRequest.onerror = () => {
-            console.error(
-              'Failed to get comment for update:',
-              getRequest.error
-            );
-            reject(getRequest.error);
-          };
-        });
-      }
-    );
-  }
-
-  /**
-   * Delete a comment from storage
-   */
-  async deleteComment(id: string): Promise<void> {
-    return this.executeTransaction(
-      COMMENTS_STORE,
-      'readwrite',
-      async transaction => {
-        const store = transaction.objectStore(COMMENTS_STORE);
-
-        return new Promise<void>((resolve, reject) => {
-          const request = store.delete(id);
-
-          request.onsuccess = () => {
-            console.log(`Comment deleted successfully: ${id}`);
-            resolve();
-          };
-
-          request.onerror = () => {
-            console.error('Failed to delete comment:', request.error);
-            reject(request.error);
-          };
-        });
-      }
-    );
-  }
-
-  /**
-   * Clear all data from storage
-   */
-  async clear(): Promise<void> {
-    return this.executeTransaction(
-      [COMMENTS_STORE, METADATA_STORE],
-      'readwrite',
-      async transaction => {
-        const commentsStore = transaction.objectStore(COMMENTS_STORE);
-        const metadataStore = transaction.objectStore(METADATA_STORE);
-
-        return new Promise<void>((resolve, reject) => {
-          let completedOperations = 0;
-          const totalOperations = 2;
-
-          const checkComplete = () => {
-            completedOperations++;
-            if (completedOperations === totalOperations) {
-              console.log('All data cleared successfully');
-              // Clear localStorage cache as well
-              try {
-                localStorage.removeItem(CACHE_KEYS.DATABASE_ID);
-                localStorage.removeItem(CACHE_KEYS.DOCUMENT_URL_ROOT);
-                localStorage.removeItem(CACHE_KEYS.SEED_VERSION);
-                localStorage.removeItem(CACHE_KEYS.ENABLED_STATE);
-                localStorage.removeItem(CACHE_KEYS.LAST_URL_CHECK);
-              } catch (error) {
-                console.warn('Failed to clear localStorage cache:', error);
-              }
-              resolve();
-            }
-          };
-
-          const commentsRequest = commentsStore.clear();
-          commentsRequest.onsuccess = checkComplete;
-          commentsRequest.onerror = () => {
-            console.error('Failed to clear comments:', commentsRequest.error);
-            reject(commentsRequest.error);
-          };
-
-          const metadataRequest = metadataStore.clear();
-          metadataRequest.onsuccess = checkComplete;
-          metadataRequest.onerror = () => {
-            console.error('Failed to clear metadata:', metadataRequest.error);
-            reject(metadataRequest.error);
-          };
-        });
-      }
-    );
   }
 }

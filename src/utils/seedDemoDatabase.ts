@@ -1,6 +1,6 @@
 /**
  * @fileoverview Demo Database Seeding Utility
- * @version 1.0.0
+ * @version 2.0.0
  * @author BackChannel Team
  */
 
@@ -27,7 +27,8 @@ export interface DemoDatabaseSeed {
 const SEED_VERSION_KEY = 'backchannel-seed-version';
 
 /**
- * Check if a demo database seed is present in window object
+ * Validates and retrieves demo seed data from window.demoDatabaseSeed
+ * @returns Validated demo seed data or null if not available or invalid
  */
 function getDemoSeed(): DemoDatabaseSeed | null {
   if (typeof window === 'undefined' || !window.demoDatabaseSeed) {
@@ -52,7 +53,7 @@ function getDemoSeed(): DemoDatabaseSeed | null {
     return null;
   }
 
-  // Validate comments
+  // Validate comments using type guard
   const validComments = (seed.comments as unknown[]).filter(
     (comment: unknown) => {
       if (!isCaptureComment(comment)) {
@@ -71,7 +72,8 @@ function getDemoSeed(): DemoDatabaseSeed | null {
 }
 
 /**
- * Get fake database configuration if available
+ * Extracts database configuration from window.fakeData for testing
+ * @returns Database configuration object or null if not available
  */
 function getFakeDbConfig(): { dbName: string; dbVersion: number } | null {
   if (typeof window === 'undefined') {
@@ -92,7 +94,38 @@ function getFakeDbConfig(): { dbName: string; dbVersion: number } | null {
 }
 
 /**
- * Check if the seed version has already been applied
+ * Completely deletes an IndexedDB database
+ * @param dbName Name of the database to delete
+ * @returns Promise that resolves when deletion is complete
+ */
+async function deleteDatabase(dbName: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const deleteRequest = indexedDB.deleteDatabase(dbName);
+
+    deleteRequest.onsuccess = () => {
+      console.log(`Database ${dbName} deleted successfully`);
+      resolve();
+    };
+
+    deleteRequest.onerror = () => {
+      console.error(
+        `Failed to delete database ${dbName}:`,
+        deleteRequest.error
+      );
+      reject(deleteRequest.error);
+    };
+
+    deleteRequest.onblocked = () => {
+      console.warn(`Database ${dbName} deletion blocked - close other tabs`);
+      // Could add timeout here if needed
+    };
+  });
+}
+
+/**
+ * Checks if a specific seed version has already been applied
+ * @param version Version string to check
+ * @returns true if version was previously applied, false otherwise
  */
 function isVersionAlreadyApplied(version: string): boolean {
   try {
@@ -105,7 +138,8 @@ function isVersionAlreadyApplied(version: string): boolean {
 }
 
 /**
- * Mark a seed version as applied
+ * Marks a seed version as applied in localStorage
+ * @param version Version string to mark as applied
  */
 function markVersionAsApplied(version: string): void {
   try {
@@ -117,20 +151,21 @@ function markVersionAsApplied(version: string): void {
 }
 
 /**
- * Seed the database with demo data if needed
- * Only seeds if the version is not yet present in localStorage
+ * Seeds the database with demo data if the version hasn't been applied before
+ * Deletes existing database and creates a fresh one for clean state
+ * @returns true if seeding was performed, false if skipped
  */
 export async function seedDemoDatabaseIfNeeded(): Promise<boolean> {
   console.log('Checking if demo database seeding is needed...');
 
-  // Check if demo seed is available
+  // Step 1: Check if demo seed is available
   const demoSeed = getDemoSeed();
   if (!demoSeed) {
     console.log('No demo seed found in window.demoDatabaseSeed');
     return false;
   }
 
-  // Check if version is already applied
+  // Step 2: Check if version is already applied
   if (isVersionAlreadyApplied(demoSeed.version)) {
     console.log(
       `Demo seed version ${demoSeed.version} already applied, skipping seeding`
@@ -141,35 +176,30 @@ export async function seedDemoDatabaseIfNeeded(): Promise<boolean> {
   try {
     console.log(`Seeding demo database with version ${demoSeed.version}...`);
 
-    // Get database configuration from fake data if available
+    // Step 3: Get database configuration
     const fakeDbConfig = getFakeDbConfig();
-    let dbService: DatabaseService;
+    const dbName = fakeDbConfig?.dbName || 'BackChannelDB';
+    const dbVersion = fakeDbConfig?.dbVersion || 1;
 
-    if (fakeDbConfig) {
-      console.log(
-        `Using fake database configuration: ${fakeDbConfig.dbName} v${fakeDbConfig.dbVersion}`
-      );
-      dbService = new DatabaseService(
-        undefined,
-        fakeDbConfig.dbName,
-        fakeDbConfig.dbVersion
-      );
-    } else {
-      console.log('Using default database configuration');
-      dbService = new DatabaseService();
+    console.log(`Using database configuration: ${dbName} v${dbVersion}`);
+
+    // Step 4: Delete existing database
+    try {
+      await deleteDatabase(dbName);
+    } catch (error) {
+      // Database may not exist, continue anyway
+      console.log('Database deletion failed (may not exist):', error);
     }
 
+    // Step 5: Create fresh database service
+    const dbService = new DatabaseService(undefined, dbName, dbVersion);
     await dbService.initialize();
 
-    // Clear existing data to ensure clean state
-    await dbService.clear();
-    console.log('Cleared existing data for fresh seeding');
-
-    // Seed metadata
+    // Step 6: Seed metadata
     await dbService.setMetadata(demoSeed.metadata);
     console.log('Demo metadata seeded successfully');
 
-    // Seed comments
+    // Step 7: Seed comments
     for (const comment of demoSeed.comments) {
       await dbService.addComment(comment);
     }
@@ -177,12 +207,12 @@ export async function seedDemoDatabaseIfNeeded(): Promise<boolean> {
       `${demoSeed.comments.length} demo comments seeded successfully`
     );
 
-    // Mark version as applied
+    // Step 8: Mark version as applied
     markVersionAsApplied(demoSeed.version);
-
     console.log(
       `Demo database seeding completed for version ${demoSeed.version}`
     );
+
     return true;
   } catch (error) {
     console.error('Failed to seed demo database:', error);
@@ -191,8 +221,8 @@ export async function seedDemoDatabaseIfNeeded(): Promise<boolean> {
 }
 
 /**
- * Force reseed demo database (for debugging purposes)
- * This will clear the version flag and reseed even if already applied
+ * Forces reseeding by clearing version flag and calling main seeding function
+ * @returns true if seeding was performed, false if failed
  */
 export async function forceReseedDemoDatabase(): Promise<boolean> {
   console.log('Force reseeding demo database...');
@@ -209,7 +239,8 @@ export async function forceReseedDemoDatabase(): Promise<boolean> {
 }
 
 /**
- * Get the currently applied seed version
+ * Gets the currently applied seed version from localStorage
+ * @returns Version string or null if no version applied
  */
 export function getCurrentSeedVersion(): string | null {
   try {
@@ -221,7 +252,8 @@ export function getCurrentSeedVersion(): string | null {
 }
 
 /**
- * Clear seed version flag (for testing/debugging)
+ * Clears the seed version flag from localStorage
+ * Used for debugging and testing scenarios
  */
 export function clearSeedVersion(): void {
   try {

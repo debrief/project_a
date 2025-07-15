@@ -271,16 +271,17 @@ describe('DatabaseService', () => {
       );
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
         'backchannel-url-root',
-        'file://'
+        'file:///test-page.html'
       );
     });
 
     it('should detect existing feedback correctly', async () => {
       // Set up existing cache
-      localStorageMock.store.set('backchannel-db-id', 'BackChannelDB_v1');
-      localStorageMock.store.set('backchannel-url-root', 'file://');
+      localStorageMock.store.set('backchannel-enabled-state', 'true');
+      localStorageMock.store.set('backchannel-last-url-check', 'file:///test-page.html');
       
-      expect(dbService.hasExistingFeedback()).toBe(true);
+      const isEnabled = await dbService.isBackChannelEnabled();
+      expect(isEnabled).toBe(true);
     });
   });
 
@@ -332,14 +333,21 @@ describe('DatabaseService', () => {
       expect(comments[0]).toEqual(testComment);
     });
 
-    it('should reject invalid comments', async () => {
-      const invalidComment = {
-        id: 'test',
-        text: 'Test'
-        // Missing required fields
-      } as any;
+    it('should add comments without validation (validation moved to type guards)', async () => {
+      await dbService.initialize();
+      
+      const comment: CaptureComment = {
+        id: 'test-comment-2',
+        text: 'Another test comment',
+        pageUrl: 'file:///test.html',
+        timestamp: '2024-01-01T12:05:00.000Z',
+        location: '/html/body/p[2]'
+      };
 
-      await expect(dbService.addComment(invalidComment)).rejects.toThrow('Invalid comment format');
+      await expect(dbService.addComment(comment)).resolves.toBeUndefined();
+      
+      const comments = await dbService.getComments();
+      expect(comments).toContainEqual(comment);
     });
 
     it('should update existing comments', async () => {
@@ -362,40 +370,33 @@ describe('DatabaseService', () => {
     });
   });
 
-  describe('clear operations', () => {
+  describe('enabled state operations', () => {
     beforeEach(async () => {
       await dbService.initialize();
     });
 
-    it('should clear all data and localStorage cache', async () => {
-      // Add some data
+    it('should clear enabled state cache', async () => {
+      // Set some cache
+      localStorageMock.store.set('backchannel-enabled-state', 'true');
+      localStorageMock.store.set('backchannel-last-url-check', 'file:///test.html');
+
+      // Clear cache
+      dbService.clearEnabledStateCache();
+
+      // Verify cache is cleared
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('backchannel-enabled-state');
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('backchannel-last-url-check');
+    });
+
+    it('should determine enabled state from database when no cache', async () => {
+      // Add metadata that matches current URL
       await dbService.setMetadata({
         documentTitle: 'Test',
-        documentRootUrl: 'file://'
+        documentRootUrl: 'file:///'
       });
 
-      await dbService.addComment({
-        id: 'test-1',
-        text: 'Test comment',
-        pageUrl: 'file:///test.html',
-        timestamp: '2024-01-01T12:00:00.000Z',
-        location: '/html/body/p[1]'
-      });
-
-      // Clear all
-      await dbService.clear();
-
-      // Verify data is cleared
-      const metadata = await dbService.getMetadata();
-      const comments = await dbService.getComments();
-      
-      expect(metadata).toBeNull();
-      expect(comments).toHaveLength(0);
-      
-      // Verify localStorage cache is cleared
-      expect(localStorageMock.removeItem).toHaveBeenCalledWith('backchannel-db-id');
-      expect(localStorageMock.removeItem).toHaveBeenCalledWith('backchannel-url-root');
-      expect(localStorageMock.removeItem).toHaveBeenCalledWith('backchannel-seed-version');
+      const isEnabled = await dbService.isBackChannelEnabled();
+      expect(isEnabled).toBe(true);
     });
   });
 });

@@ -26,11 +26,37 @@ const localStorageMock = {
 vi.mock('../../src/services/DatabaseService', () => ({
   DatabaseService: vi.fn().mockImplementation(() => ({
     initialize: vi.fn().mockResolvedValue(undefined),
-    clear: vi.fn().mockResolvedValue(undefined),
     setMetadata: vi.fn().mockResolvedValue(undefined),
     addComment: vi.fn().mockResolvedValue(undefined)
   }))
 }));
+
+// Mock indexedDB
+const mockIndexedDB = {
+  deleteDatabase: vi.fn().mockImplementation((name: string) => {
+    const request = {
+      onsuccess: null as any,
+      onerror: null as any,
+      onblocked: null as any,
+      result: null,
+      error: null
+    };
+    
+    // Simulate successful deletion
+    setTimeout(() => {
+      if (request.onsuccess) {
+        request.onsuccess();
+      }
+    }, 0);
+    
+    return request;
+  })
+};
+
+Object.defineProperty(global, 'indexedDB', {
+  value: mockIndexedDB,
+  writable: true
+});
 
 describe('seedDemoDatabase', () => {
   beforeEach(() => {
@@ -49,6 +75,9 @@ describe('seedDemoDatabase', () => {
     // Clear localStorage mock
     localStorageMock.store.clear();
     vi.clearAllMocks();
+    
+    // Reset indexedDB mock
+    mockIndexedDB.deleteDatabase.mockClear();
   });
 
   describe('seedDemoDatabaseIfNeeded', () => {
