@@ -202,11 +202,19 @@ export class BackChannelIcon extends LitElement {
     this.setAttribute('enabled', this.enabled.toString());
     this.updateTitle();
     this.initializeModal();
+
+    // Add event listeners to the host element
+    this.addEventListener('click', this.handleClick);
+    this.addEventListener('keydown', this.handleKeydown);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this.cleanupModal();
+
+    // Remove event listeners
+    this.removeEventListener('click', this.handleClick);
+    this.removeEventListener('keydown', this.handleKeydown);
   }
 
   render(): TemplateResult {
@@ -217,8 +225,6 @@ export class BackChannelIcon extends LitElement {
         viewBox="0 0 24 24"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        @click=${this.handleClick}
-        @keydown=${this.handleKeydown}
       >
         <path
           d="M20 2H4C2.9 2 2 2.9 2 4V16C2 17.1 2.9 18 4 18H6L10 22L14 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z"
@@ -347,6 +353,13 @@ export class BackChannelIcon extends LitElement {
    * Handle click events
    */
   private handleClick = (): void => {
+    // If not enabled, the default action is to open the package creation modal
+    if (!this.enabled) {
+      this.openPackageModal();
+      return;
+    }
+
+    // If enabled, defer to the main plugin's click handler for state changes
     if (this.clickHandler) {
       this.clickHandler();
     }
