@@ -21,7 +21,8 @@
       "Bash(yarn dev)",
       "Bash(npm run test:integration:*)",
       "Bash(npx:*)",
-      "Bash(yarn test:*)"
+      "Bash(yarn test:*)",
+      "Bash(timeout 30s yarn test:integration --grep \"should display BackChannel icon after initialization\")"
     ],
     "deny": []
   }

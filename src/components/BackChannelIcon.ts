@@ -22,6 +22,9 @@ export class BackChannelIcon extends LitElement {
   @property({ type: String })
   state: FeedbackState = FeedbackState.INACTIVE;
 
+  @property({ type: Boolean })
+  enabled: boolean = false;
+
   @property({ type: Function })
   clickHandler?: () => void;
 
@@ -64,33 +67,50 @@ export class BackChannelIcon extends LitElement {
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     }
 
-    /* State-based styling */
-    :host([state='inactive']) {
+    /* Enabled/disabled styling */
+    :host([enabled='false']) {
+      color: #dc3545;
+      border-color: #dc3545;
+      background: #f8f9fa;
+      opacity: 0.7;
+    }
+
+    :host([enabled='false']) .backchannel-icon-badge {
+      fill: #dc3545;
+    }
+
+    :host([enabled='false']:hover) {
+      background: #e2e6ea;
+      transform: translateY(-1px);
+    }
+
+    /* State-based styling (only when enabled) */
+    :host([enabled='true'][state='inactive']) {
       color: #6c757d;
       border-color: #6c757d;
     }
 
-    :host([state='inactive']) .backchannel-icon-badge {
+    :host([enabled='true'][state='inactive']) .backchannel-icon-badge {
       fill: #6c757d;
     }
 
-    :host([state='capture']) {
+    :host([enabled='true'][state='capture']) {
       color: #007acc;
       border-color: #007acc;
       background: #e3f2fd;
     }
 
-    :host([state='capture']) .backchannel-icon-badge {
+    :host([enabled='true'][state='capture']) .backchannel-icon-badge {
       fill: #007acc;
     }
 
-    :host([state='review']) {
+    :host([enabled='true'][state='review']) {
       color: #28a745;
       border-color: #28a745;
       background: #e8f5e8;
     }
 
-    :host([state='review']) .backchannel-icon-badge {
+    :host([enabled='true'][state='review']) .backchannel-icon-badge {
       fill: #28a745;
     }
 
@@ -178,6 +198,8 @@ export class BackChannelIcon extends LitElement {
     this.setAttribute('role', 'button');
     this.setAttribute('tabindex', '0');
     this.setAttribute('id', 'backchannel-icon');
+    this.setAttribute('state', this.state);
+    this.setAttribute('enabled', this.enabled.toString());
     this.updateTitle();
     this.initializeModal();
   }
@@ -238,7 +260,14 @@ export class BackChannelIcon extends LitElement {
     this.packageModal.options = {
       onSuccess: metadata => {
         console.log('Package created successfully:', metadata);
+        // Enable BackChannel and set to capture mode
+        this.setEnabled(true);
         this.setState(FeedbackState.CAPTURE);
+
+        // Notify the main plugin that BackChannel is now enabled
+        if (typeof window !== 'undefined' && window.BackChannel) {
+          window.BackChannel.enableBackChannel();
+        }
       },
       onCancel: () => {
         console.log('Package creation cancelled');
@@ -273,21 +302,35 @@ export class BackChannelIcon extends LitElement {
   }
 
   /**
+   * Set the enabled state and update visual appearance
+   */
+  setEnabled(isEnabled: boolean): void {
+    this.enabled = isEnabled;
+    this.setAttribute('enabled', isEnabled.toString());
+    this.updateTitle();
+    this.requestUpdate();
+  }
+
+  /**
    * Update the icon's title based on state
    */
   private updateTitle(): void {
     let title = 'BackChannel Feedback';
 
-    switch (this.state) {
-      case FeedbackState.INACTIVE:
-        title = 'BackChannel Feedback - Click to activate';
-        break;
-      case FeedbackState.CAPTURE:
-        title = 'BackChannel Feedback - Capture Mode Active';
-        break;
-      case FeedbackState.REVIEW:
-        title = 'BackChannel Feedback - Review Mode Active';
-        break;
+    if (!this.enabled) {
+      title = 'BackChannel Feedback - Click to create feedback package';
+    } else {
+      switch (this.state) {
+        case FeedbackState.INACTIVE:
+          title = 'BackChannel Feedback - Click to activate';
+          break;
+        case FeedbackState.CAPTURE:
+          title = 'BackChannel Feedback - Capture Mode Active';
+          break;
+        case FeedbackState.REVIEW:
+          title = 'BackChannel Feedback - Review Mode Active';
+          break;
+      }
     }
 
     this.setAttribute('title', title);

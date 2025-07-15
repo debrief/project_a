@@ -162,3 +162,37 @@ export type NewComment = Omit<CaptureComment, 'id' | 'timestamp'>;
  * Utility type for comment updates
  */
 export type CommentUpdate = Partial<Omit<CaptureComment, 'id'>>;
+
+/**
+ * Fake database store structure for testing
+ */
+export interface FakeDbStore {
+  /** Version of the fake data format */
+  version: number;
+  /** Array of fake databases */
+  databases: FakeDatabase[];
+}
+
+/**
+ * Fake database structure for testing
+ */
+export interface FakeDatabase {
+  /** Database name */
+  name: string;
+  /** Database version */
+  version: number;
+  /** Array of object stores */
+  objectStores: FakeObjectStore[];
+}
+
+/**
+ * Fake object store structure for testing
+ */
+export interface FakeObjectStore {
+  /** Object store name */
+  name: string;
+  /** Key path for the object store */
+  keyPath: string;
+  /** Data items in the object store */
+  data: unknown[];
+}

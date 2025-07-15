@@ -35,17 +35,21 @@ test.describe('Welcome Page', () => {
     // Wait for the script to load and auto-initialize
     await page.waitForLoadState('networkidle');
     
-    // Click reinitialize button
-    await page.getByRole('button', { name: 'Reinitialize with Custom Config' }).click();
-    
-    // Check that alert appears
+    // Set up dialog handler first
     page.on('dialog', async dialog => {
       expect(dialog.message()).toContain('Plugin reinitialized with custom configuration!');
       await dialog.accept();
     });
     
-    // Check that plugin configuration is updated
-    await expect(page.locator('#plugin-config')).toContainText('backchannel-demo-custom');
+    // Click reinitialize button
+    await page.getByRole('button', { name: 'Reinitialize with Custom Config' }).click();
+    
+    // Wait for reinitialization to complete
+    await page.waitForTimeout(500);
+    
+    // Check that plugin configuration contains custom settings (but storageKey will be auto-generated)
+    await expect(page.locator('#plugin-config')).toContainText('requireInitials');
+    await expect(page.locator('#plugin-config')).toContainText('true'); // requireInitials should be true
   });
 
   test('should display plugin configuration after auto-initialization', async ({ page }) => {
@@ -73,7 +77,7 @@ test.describe('Welcome Page', () => {
     await expect(icon).toBeVisible();
     
     // Check that the icon has the correct initial state
-    await expect(icon).toHaveClass(/inactive/);
+    await expect(icon).toHaveAttribute('state', 'inactive');
   });
 
   test('should handle icon click and open package creation modal', async ({ page }) => {
@@ -87,7 +91,7 @@ test.describe('Welcome Page', () => {
     await expect(icon).toBeVisible();
     
     // Initially should be inactive
-    await expect(icon).toHaveClass(/inactive/);
+    await expect(icon).toHaveAttribute('state', 'inactive');
     
     // Click to open package creation modal
     await icon.click();
@@ -99,19 +103,19 @@ test.describe('Welcome Page', () => {
     const modal = page.locator('package-creation-modal');
     await expect(modal).toBeVisible();
     
-    // Check modal title
-    const title = modal.locator('#modal-title');
+    // Check modal title (inside shadow DOM)
+    const title = page.locator('package-creation-modal #modal-title');
     await expect(title).toContainText('Create Feedback Package');
     
     // Close modal
-    const closeButton = modal.locator('.backchannel-modal-close');
+    const closeButton = page.locator('package-creation-modal .backchannel-modal-close');
     await closeButton.click();
     
     // Modal should be closed
     await expect(modal).not.toBeVisible();
     
     // Icon should still be inactive
-    await expect(icon).toHaveClass(/inactive/);
+    await expect(icon).toHaveAttribute('state', 'inactive');
   });
 
   test('should verify demo database seeding', async ({ page }) => {

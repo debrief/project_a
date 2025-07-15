@@ -26,6 +26,8 @@ const CACHE_KEYS = {
   DATABASE_ID: 'backchannel-db-id',
   DOCUMENT_URL_ROOT: 'backchannel-url-root',
   SEED_VERSION: 'backchannel-seed-version',
+  ENABLED_STATE: 'backchannel-enabled-state',
+  LAST_URL_CHECK: 'backchannel-last-url-check',
 } as const;
 
 /**
@@ -139,6 +141,130 @@ export class DatabaseService implements StorageInterface {
       console.log('Basic info cached to localStorage');
     } catch (error) {
       console.warn('Failed to cache basic info to localStorage:', error);
+    }
+  }
+
+  /**
+   * Check if BackChannel should be enabled for the current page
+   * Uses localStorage cache first, then falls back to database scan
+   */
+  async isBackChannelEnabled(): Promise<boolean> {
+    try {
+      const currentUrl = this.getCurrentPageUrl();
+      const cachedEnabledState = localStorage.getItem(CACHE_KEYS.ENABLED_STATE);
+      const cachedUrlRoot = localStorage.getItem(CACHE_KEYS.DOCUMENT_URL_ROOT);
+      const lastUrlCheck = localStorage.getItem(CACHE_KEYS.LAST_URL_CHECK);
+
+      // Fast path: check if cache is valid for current URL
+      if (cachedEnabledState !== null && cachedUrlRoot && lastUrlCheck) {
+        const lastCheckTime = parseInt(lastUrlCheck, 10);
+        const cacheAge = Date.now() - lastCheckTime;
+        const cacheValidDuration = 5 * 60 * 1000; // 5 minutes
+
+        if (
+          cacheAge < cacheValidDuration &&
+          currentUrl.startsWith(cachedUrlRoot)
+        ) {
+          console.log(
+            'BackChannel enabled state from cache:',
+            cachedEnabledState === 'true'
+          );
+          return cachedEnabledState === 'true';
+        }
+      }
+
+      // Slow path: scan database for matching URL root
+      const enabled = await this.scanDatabaseForUrlMatch(currentUrl);
+
+      // Update cache
+      if (enabled) {
+        const metadata = await this.getMetadata();
+        if (metadata) {
+          localStorage.setItem(CACHE_KEYS.ENABLED_STATE, 'true');
+          localStorage.setItem(
+            CACHE_KEYS.DOCUMENT_URL_ROOT,
+            metadata.documentRootUrl
+          );
+          localStorage.setItem(
+            CACHE_KEYS.LAST_URL_CHECK,
+            Date.now().toString()
+          );
+        }
+      } else {
+        localStorage.setItem(CACHE_KEYS.ENABLED_STATE, 'false');
+        localStorage.setItem(CACHE_KEYS.LAST_URL_CHECK, Date.now().toString());
+      }
+
+      console.log('BackChannel enabled state determined:', enabled);
+      return enabled;
+    } catch (error) {
+      console.error('Error determining BackChannel enabled state:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Scan all metadata entries in the database to find a matching URL root
+   */
+  private async scanDatabaseForUrlMatch(currentUrl: string): Promise<boolean> {
+    if (!this.db) {
+      console.warn('Database not initialized for URL scan');
+      return false;
+    }
+
+    try {
+      const allMetadata = await this.executeTransaction(
+        [METADATA_STORE],
+        'readonly',
+        async transaction => {
+          const store = transaction.objectStore(METADATA_STORE);
+          return new Promise<DocumentMetadata[]>((resolve, reject) => {
+            const request = store.getAll();
+            request.onsuccess = () => {
+              const results = request.result || [];
+              resolve(results);
+            };
+            request.onerror = () => reject(request.error);
+          });
+        }
+      );
+
+      // Check if any metadata entry has a URL root that matches the current URL
+      for (const metadata of allMetadata) {
+        if (currentUrl.startsWith(metadata.documentRootUrl)) {
+          console.log('Found matching URL root:', metadata.documentRootUrl);
+          return true;
+        }
+      }
+
+      console.log('No matching URL root found in database');
+      return false;
+    } catch (error) {
+      console.error('Error scanning database for URL match:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get the current page URL
+   */
+  private getCurrentPageUrl(): string {
+    if (typeof window !== 'undefined' && window.location) {
+      return window.location.href;
+    }
+    return '';
+  }
+
+  /**
+   * Clear the enabled state cache
+   */
+  clearEnabledStateCache(): void {
+    try {
+      localStorage.removeItem(CACHE_KEYS.ENABLED_STATE);
+      localStorage.removeItem(CACHE_KEYS.LAST_URL_CHECK);
+      console.log('Enabled state cache cleared');
+    } catch (error) {
+      console.warn('Failed to clear enabled state cache:', error);
     }
   }
 
@@ -441,6 +567,8 @@ export class DatabaseService implements StorageInterface {
                 localStorage.removeItem(CACHE_KEYS.DATABASE_ID);
                 localStorage.removeItem(CACHE_KEYS.DOCUMENT_URL_ROOT);
                 localStorage.removeItem(CACHE_KEYS.SEED_VERSION);
+                localStorage.removeItem(CACHE_KEYS.ENABLED_STATE);
+                localStorage.removeItem(CACHE_KEYS.LAST_URL_CHECK);
               } catch (error) {
                 console.warn('Failed to clear localStorage cache:', error);
               }
