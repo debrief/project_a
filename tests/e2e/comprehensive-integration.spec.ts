@@ -91,25 +91,27 @@ test.describe('BackChannel Comprehensive Integration Tests', () => {
       expect(seedingLogs.length).toBeGreaterThan(0);
     });
 
-    test('should not attempt seeding when no fake data is present', async ({ page }) => {
+    test('should not attempt seeding when version is already applied', async ({ page }) => {
       // Set up console log collection BEFORE navigation
       const logs = [];
       page.on('console', msg => logs.push(msg.text()));
       
-      // Navigate to main page without fake data
-      await page.goto('/');
-      
-      // Wait for BackChannel to initialize
+      // Navigate to enabled page (which will seed)
+      await page.goto('/tests/e2e/fixtures/enabled-test/enabled/index.html');
       await waitForBackChannelInit(page);
-      
-      // Wait a bit for all logs to be captured
       await page.waitForTimeout(2000);
       
-      const noSeedLogs = logs.filter(log => 
-        log.includes('No demo seed found')
+      // Navigate to the same page again (which should not seed)
+      await page.goto('/tests/e2e/fixtures/enabled-test/enabled/index.html');
+      await waitForBackChannelInit(page);
+      await page.waitForTimeout(2000);
+      
+      const skipSeedLogs = logs.filter(log => 
+        log.includes('already applied and verified, skipping seeding') || 
+        log.includes('seed already applied')
       );
       
-      expect(noSeedLogs.length).toBeGreaterThan(0);
+      expect(skipSeedLogs.length).toBeGreaterThan(0);
     });
   });
 
@@ -374,21 +376,28 @@ test.describe('BackChannel Comprehensive Integration Tests', () => {
 
   test.describe('URL Pattern Matching Edge Cases', () => {
     test('should handle different port numbers correctly', async ({ page }) => {
+      // Set up console logging BEFORE navigation
+      const logs = [];
+      page.on('console', msg => logs.push(msg.text()));
+      
       // Navigate to enabled section
       await page.goto('/tests/e2e/fixtures/enabled-test/enabled/index.html');
       await waitForBackChannelInit(page);
       
-      // Check URL matching logs in console
-      const logs = [];
-      page.on('console', msg => logs.push(msg.text()));
+      // Wait for initial logs to be captured
+      await page.waitForTimeout(2000);
       
-      // Trigger enabled state check
+      // Trigger enabled state check to get more logs
       await page.evaluate(() => {
         if (window.BackChannel && window.BackChannel.databaseService) {
+          window.BackChannel.databaseService.clearEnabledStateCache();
           return window.BackChannel.databaseService.isBackChannelEnabled();
         }
         return Promise.resolve(false);
       });
+      
+      // Wait for more logs
+      await page.waitForTimeout(1000);
       
       // Verify path-based matching is working
       const matchingLogs = logs.filter(log => 

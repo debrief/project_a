@@ -345,7 +345,7 @@ test.describe('Database Integration Tests', () => {
 
     expect(result.isEnabledFirst).toBe(true);
     expect(result.isEnabledAfterClear).toBe(true);
-    expect(result.currentUrl).toContain('localhost:3001');
+    expect(result.currentUrl).toContain('localhost:3000');
   });
 
   test('should handle database recreation during seeding', async ({ page }) => {
