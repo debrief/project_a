@@ -369,8 +369,8 @@ export class DatabaseService implements StorageInterface {
 
       // Check if any metadata entry has a URL root that matches the current URL
       for (const metadata of allMetadata) {
-        if (currentUrl.startsWith(metadata.documentRootUrl)) {
-          console.log('Found matching URL root:', metadata.documentRootUrl);
+        if (this.urlPathMatches(currentUrl, metadata.documentRootUrl)) {
+          console.log('Found matching URL pattern:', metadata.documentRootUrl);
           return true;
         }
       }
@@ -406,6 +406,64 @@ export class DatabaseService implements StorageInterface {
       return window.location.href;
     }
     return '';
+  }
+
+  /**
+   * Checks if a current URL matches a document root URL pattern
+   * Uses flexible path-based matching that ignores protocol, host, and port differences
+   * @param currentUrl The current page URL
+   * @param documentRootUrl The pattern URL from the feedback package
+   * @returns true if the current URL path contains the document root path
+   */
+  private urlPathMatches(currentUrl: string, documentRootUrl: string): boolean {
+    try {
+      // Handle special case for file:// protocol patterns
+      if (documentRootUrl === 'file://' || documentRootUrl === 'file:///') {
+        const matches = currentUrl.startsWith('file://');
+        console.log(
+          `File protocol matching: "${currentUrl}" starts with "file://" = ${matches}`
+        );
+        return matches;
+      }
+
+      // Handle cases where documentRootUrl might be a simple path
+      let patternPath: string;
+      if (
+        documentRootUrl.startsWith('http://') ||
+        documentRootUrl.startsWith('https://') ||
+        documentRootUrl.startsWith('file://')
+      ) {
+        // Full URL - extract just the path
+        const patternUrl = new URL(documentRootUrl);
+        patternPath = patternUrl.pathname;
+      } else if (documentRootUrl.startsWith('/')) {
+        // Already a path
+        patternPath = documentRootUrl;
+      } else {
+        // Relative path - treat as a path component
+        patternPath = '/' + documentRootUrl;
+      }
+
+      // Extract path from current URL
+      const currentUrlObj = new URL(currentUrl);
+      const currentPath = currentUrlObj.pathname;
+
+      // Check if current path contains the pattern path
+      const matches = currentPath.includes(patternPath);
+
+      console.log(
+        `URL path matching: "${currentPath}" contains "${patternPath}" = ${matches}`
+      );
+      return matches;
+    } catch (error) {
+      console.warn('URL parsing error in urlPathMatches:', error);
+      // Fallback to simple string containment
+      const matches = currentUrl.includes(documentRootUrl);
+      console.log(
+        `Fallback string matching: "${currentUrl}" contains "${documentRootUrl}" = ${matches}`
+      );
+      return matches;
+    }
   }
 
   /**

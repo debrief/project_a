@@ -68,11 +68,11 @@ class BackChannelPlugin {
     };
 
     try {
-      // Initialize database service
-      await this.databaseService.initialize();
-
-      // Seed demo database if needed
+      // Seed demo database if needed (BEFORE opening database)
       await seedDemoDatabaseIfNeeded();
+
+      // Initialize database service (after seeding is complete)
+      await this.databaseService.initialize();
 
       // Determine if BackChannel should be enabled for this page
       this.isEnabled = await this.databaseService.isBackChannelEnabled();

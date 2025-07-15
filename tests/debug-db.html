@@ -288,8 +288,8 @@
                 // Clear version to force reseed
                 seedModule.clearSeedVersion();
                 
-                // Test seeding with retries
-                const result = await seedModule.seedDemoDatabaseIfNeeded(5);
+                // Test seeding
+                const result = await seedModule.seedDemoDatabaseIfNeeded();
                 
                 log(`Seeding result: ${result}`, result ? 'success' : 'error');
                 

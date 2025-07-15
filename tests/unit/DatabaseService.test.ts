@@ -398,5 +398,34 @@ describe('DatabaseService', () => {
       const isEnabled = await dbService.isBackChannelEnabled();
       expect(isEnabled).toBe(true);
     });
+
+    it('should match URLs using flexible path-based matching', async () => {
+      // Test path-based matching (ignoring protocol/host/port)
+      await dbService.setMetadata({
+        documentTitle: 'Path Test',
+        documentRootUrl: '/test-page.html'
+      });
+
+      const isEnabled = await dbService.isBackChannelEnabled();
+      expect(isEnabled).toBe(true);
+    });
+
+    it('should match URLs with path segments', async () => {
+      // Test path segment matching
+      await dbService.setMetadata({
+        documentTitle: 'Segment Test',
+        documentRootUrl: '/fixtures/enabled-test'
+      });
+
+      // Mock current URL to contain the path segment
+      const originalHref = mockWindow.location.href;
+      mockWindow.location.href = 'http://localhost:3001/tests/e2e/fixtures/enabled-test/enabled/index.html';
+
+      const isEnabled = await dbService.isBackChannelEnabled();
+      expect(isEnabled).toBe(true);
+
+      // Restore original URL
+      mockWindow.location.href = originalHref;
+    });
   });
 });

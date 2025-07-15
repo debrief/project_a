@@ -94,6 +94,48 @@ function getFakeDbConfig(): { dbName: string; dbVersion: number } | null {
 }
 
 /**
+ * Checks if a database exists without opening it
+ * @param dbName Name of the database to check
+ * @returns Promise<boolean> true if database exists
+ */
+async function databaseExists(dbName: string): Promise<boolean> {
+  return new Promise(resolve => {
+    try {
+      // Check if indexedDB is available (might not be in test environment)
+      if (typeof indexedDB === 'undefined' || !indexedDB || !indexedDB.open) {
+        // In test environment, assume database doesn't exist
+        resolve(false);
+        return;
+      }
+
+      // Try to open database with version 1 to see if it exists
+      const request = indexedDB.open(dbName);
+
+      request.onsuccess = () => {
+        const db = request.result;
+        const exists = db.version > 0;
+        db.close();
+        resolve(exists);
+      };
+
+      request.onerror = () => {
+        // Database doesn't exist or can't be opened
+        resolve(false);
+      };
+
+      request.onblocked = () => {
+        // Database exists but is blocked
+        resolve(true);
+      };
+    } catch (error) {
+      console.warn('Error checking database existence:', error);
+      // Any error means we can't check, assume doesn't exist
+      resolve(false);
+    }
+  });
+}
+
+/**
  * Closes any active database connections for the specified database
  * @param dbName Name of the database to close connections for
  */
@@ -195,26 +237,15 @@ function markVersionAsApplied(version: string): void {
 /**
  * Seeds the database with demo data if the version hasn't been applied before
  * Deletes existing database and creates a fresh one for clean state
- * @param retryCount Number of retries to attempt if demo seed not found
  * @returns true if seeding was performed, false if skipped
  */
-export async function seedDemoDatabaseIfNeeded(
-  retryCount = 3
-): Promise<boolean> {
+export async function seedDemoDatabaseIfNeeded(): Promise<boolean> {
   console.log('Checking if demo database seeding is needed...');
 
-  // Step 1: Check if demo seed is available (with retry for timing issues)
+  // Step 1: Check if demo seed is available
   const demoSeed = getDemoSeed();
-  if (!demoSeed && retryCount > 0) {
-    console.log(
-      `No demo seed found, retrying in 100ms (${retryCount} attempts left)...`
-    );
-    await new Promise(resolve => setTimeout(resolve, 100));
-    return seedDemoDatabaseIfNeeded(retryCount - 1);
-  }
-
   if (!demoSeed) {
-    console.log('No demo seed found in window.demoDatabaseSeed after retries');
+    console.log('No demo seed found in window.demoDatabaseSeed');
     return false;
   }
 
@@ -236,12 +267,17 @@ export async function seedDemoDatabaseIfNeeded(
 
     console.log(`Using database configuration: ${dbName} v${dbVersion}`);
 
-    // Step 4: Delete existing database
-    try {
-      await deleteDatabase(dbName);
-    } catch (error) {
-      // Database may not exist, continue anyway
-      console.log('Database deletion failed (may not exist):', error);
+    // Step 4: Delete existing database (only if it exists)
+    if (await databaseExists(dbName)) {
+      console.log(`Database ${dbName} exists, deleting it...`);
+      try {
+        await deleteDatabase(dbName);
+      } catch (error) {
+        console.warn('Database deletion failed:', error);
+        // Try to continue anyway
+      }
+    } else {
+      console.log(`Database ${dbName} does not exist, creating fresh`);
     }
 
     // Step 5: Create fresh database service
@@ -287,8 +323,8 @@ export async function forceReseedDemoDatabase(): Promise<boolean> {
     console.warn('Failed to clear seed version flag:', error);
   }
 
-  // Perform seeding with extended retry for forced operations
-  return await seedDemoDatabaseIfNeeded(5);
+  // Perform seeding
+  return await seedDemoDatabaseIfNeeded();
 }
 
 /**

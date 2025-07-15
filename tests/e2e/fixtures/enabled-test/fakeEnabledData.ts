@@ -14,7 +14,7 @@ export const enabledTestSeed: DemoDatabaseSeed = {
   version: 'demo-v1-enabled',
   metadata: {
     documentTitle: 'Enabled Test Package',
-    documentRootUrl: 'http://localhost:3000/tests/e2e/fixtures/enabled-test/enabled',
+    documentRootUrl: '/tests/e2e/fixtures/enabled-test/enabled',
     documentId: 'pkg-1234567890',
     reviewer: 'Test Author 1',
   },
