@@ -101,4 +101,6 @@ if (typeof window !== 'undefined') {
     enumerable: true,
     configurable: true,
   });
+
+  console.log('fake data set on window object');
 }

@@ -288,10 +288,18 @@
                 // Clear version to force reseed
                 seedModule.clearSeedVersion();
                 
-                // Test seeding
-                const result = await seedModule.seedDemoDatabaseIfNeeded();
+                // Test seeding with retries
+                const result = await seedModule.seedDemoDatabaseIfNeeded(5);
                 
                 log(`Seeding result: ${result}`, result ? 'success' : 'error');
+                
+                if (!result) {
+                    log('Check if window.demoDatabaseSeed is available:', 'info');
+                    log(`demoDatabaseSeed exists: ${!!window.demoDatabaseSeed}`, 'info');
+                    if (window.demoDatabaseSeed) {
+                        log(`Version: ${window.demoDatabaseSeed.version}`, 'info');
+                    }
+                }
                 
             } catch (error) {
                 log(`Seeding test failed: ${error.message}`, 'error');
