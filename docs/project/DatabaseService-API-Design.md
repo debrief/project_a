@@ -146,6 +146,55 @@ constructor(
 
 **Database Recreation Approach**: Instead of clearing data from an existing database, the seeding process deletes the entire database and creates a fresh one. This ensures a completely clean state and handles any potential schema changes or corruption issues.
 
+#### Detailed Seeding Process Flow
+
+```typescript
+async function seedDemoDatabaseIfNeeded(): Promise<boolean> {
+  console.log('Checking if demo database seeding is needed...');
+
+  // Step 1: Check if demo seed is available
+  const demoSeed = getDemoSeed();
+  if (!demoSeed) {
+    console.log('No demo seed found in window.demoDatabaseSeed');
+    return false;
+  }
+
+  // Step 2: Check if version is already applied
+  if (isVersionAlreadyApplied(demoSeed.version)) {
+    console.log(`Demo seed version ${demoSeed.version} already applied, skipping seeding`);
+    return false;
+  }
+
+  // Step 3: Get database configuration
+  const fakeDbConfig = getFakeDbConfig();
+  const dbName = fakeDbConfig?.dbName || 'BackChannelDB';
+  const dbVersion = fakeDbConfig?.dbVersion || 1;
+
+  // Step 4: Delete existing database
+  await deleteDatabase(dbName);
+
+  // Step 5: Create fresh database service
+  const dbService = new DatabaseService(undefined, dbName, dbVersion);
+  await dbService.initialize();
+
+  // Step 6: Seed metadata
+  await dbService.setMetadata(demoSeed.metadata);
+  console.log('Demo metadata seeded successfully');
+
+  // Step 7: Seed comments
+  for (const comment of demoSeed.comments) {
+    await dbService.addComment(comment);
+  }
+  console.log(`${demoSeed.comments.length} demo comments seeded successfully`);
+
+  // Step 8: Mark version as applied
+  markVersionAsApplied(demoSeed.version);
+  console.log(`Demo database seeding completed for version ${demoSeed.version}`);
+  
+  return true;
+}
+```
+
 ### Demo Data Structure
 
 #### Expected Window Object Structure
@@ -194,7 +243,46 @@ window.demoDatabaseSeed = {
 - Handles success, error, and blocked scenarios
 - Provides clean slate for database recreation
 
+**Implementation**:
+```typescript
+async function deleteDatabase(dbName: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const deleteRequest = indexedDB.deleteDatabase(dbName);
+    
+    deleteRequest.onsuccess = () => {
+      console.log(`Database ${dbName} deleted successfully`);
+      resolve();
+    };
+    
+    deleteRequest.onerror = () => {
+      console.error(`Failed to delete database ${dbName}:`, deleteRequest.error);
+      reject(deleteRequest.error);
+    };
+    
+    deleteRequest.onblocked = () => {
+      console.warn(`Database ${dbName} deletion blocked - close other tabs`);
+      // Could add timeout here if needed
+    };
+  });
+}
+```
+
 **Usage**: Called internally by seeding process before creating fresh database.
+
+#### `getDemoSeed(): DemoDatabaseSeed | null`
+
+**Purpose**: Validates and retrieves demo seed data from `window.demoDatabaseSeed`.
+
+**Returns**: Validated demo seed data or null if not available or invalid.
+
+**Validation**:
+- Checks if `window.demoDatabaseSeed` exists
+- Validates version is a string
+- Validates metadata is an object
+- Validates comments is an array
+- Validates each comment using `isCaptureComment()` type guard
+
+**Usage**: Called at start of seeding process to get demo data.
 
 #### `getFakeDbConfig(): { dbName: string; dbVersion: number } | null`
 
@@ -215,6 +303,19 @@ window.demoDatabaseSeed = {
 
 **Returns**: `true` if version was previously applied, `false` otherwise.
 
+**Implementation**:
+```typescript
+function isVersionAlreadyApplied(version: string): boolean {
+  try {
+    const appliedVersion = localStorage.getItem(SEED_VERSION_KEY);
+    return appliedVersion === version;
+  } catch (error) {
+    console.warn('Failed to check applied seed version:', error);
+    return false;
+  }
+}
+```
+
 **Storage**: Uses localStorage key `'backchannel-seed-version'`.
 
 #### `markVersionAsApplied(version: string): void`
@@ -224,11 +325,40 @@ window.demoDatabaseSeed = {
 **Parameters**:
 - `version`: Version string to mark as applied
 
+**Implementation**:
+```typescript
+function markVersionAsApplied(version: string): void {
+  try {
+    localStorage.setItem(SEED_VERSION_KEY, version);
+    console.log(`Seed version ${version} marked as applied`);
+  } catch (error) {
+    console.warn('Failed to mark seed version as applied:', error);
+  }
+}
+```
+
 ### Utility Functions
 
 #### `forceReseedDemoDatabase(): Promise<boolean>`
 
 **Purpose**: Forces reseeding by clearing version flag and calling main seeding function.
+
+**Implementation**:
+```typescript
+export async function forceReseedDemoDatabase(): Promise<boolean> {
+  console.log('Force reseeding demo database...');
+  
+  // Clear the version flag
+  try {
+    localStorage.removeItem(SEED_VERSION_KEY);
+  } catch (error) {
+    console.warn('Failed to clear seed version flag:', error);
+  }
+  
+  // Perform seeding
+  return await seedDemoDatabaseIfNeeded();
+}
+```
 
 **Usage**: For debugging and testing purposes.
 
@@ -238,9 +368,33 @@ window.demoDatabaseSeed = {
 
 **Returns**: Version string or null if no version applied.
 
+**Implementation**:
+```typescript
+export function getCurrentSeedVersion(): string | null {
+  try {
+    return localStorage.getItem(SEED_VERSION_KEY);
+  } catch (error) {
+    console.warn('Failed to get current seed version:', error);
+    return null;
+  }
+}
+```
+
 #### `clearSeedVersion(): void`
 
 **Purpose**: Clears the seed version flag from localStorage.
+
+**Implementation**:
+```typescript
+export function clearSeedVersion(): void {
+  try {
+    localStorage.removeItem(SEED_VERSION_KEY);
+    console.log('Seed version flag cleared');
+  } catch (error) {
+    console.warn('Failed to clear seed version flag:', error);
+  }
+}
+```
 
 **Usage**: For debugging and testing scenarios.
 
