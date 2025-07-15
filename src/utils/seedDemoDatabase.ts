@@ -94,11 +94,37 @@ function getFakeDbConfig(): { dbName: string; dbVersion: number } | null {
 }
 
 /**
+ * Closes any active database connections for the specified database
+ * @param dbName Name of the database to close connections for
+ */
+function closeActiveConnections(dbName: string): void {
+  try {
+    // Check if BackChannel has an active database service that matches
+    if (typeof window !== 'undefined' && (window as any).BackChannel) {
+      const backChannel = (window as any).BackChannel;
+      if (
+        backChannel.databaseService &&
+        backChannel.databaseService.getDatabaseName &&
+        backChannel.databaseService.getDatabaseName() === dbName
+      ) {
+        console.log(`Closing active BackChannel connection to ${dbName}`);
+        backChannel.databaseService.close();
+      }
+    }
+  } catch (error) {
+    console.warn('Error closing active connections:', error);
+  }
+}
+
+/**
  * Completely deletes an IndexedDB database
  * @param dbName Name of the database to delete
  * @returns Promise that resolves when deletion is complete
  */
 async function deleteDatabase(dbName: string): Promise<void> {
+  // First close any active connections
+  closeActiveConnections(dbName);
+
   return new Promise((resolve, reject) => {
     const deleteRequest = indexedDB.deleteDatabase(dbName);
 
@@ -117,7 +143,11 @@ async function deleteDatabase(dbName: string): Promise<void> {
 
     deleteRequest.onblocked = () => {
       console.warn(`Database ${dbName} deletion blocked - close other tabs`);
-      // Could add timeout here if needed
+      // Add a timeout to resolve anyway after a few seconds
+      setTimeout(() => {
+        console.warn(`Database deletion timeout, continuing anyway`);
+        resolve();
+      }, 3000);
     };
   });
 }

@@ -134,6 +134,15 @@
             log(`Attempting to delete database: ${dbName}`);
             
             try {
+                // First, close any active BackChannel connections
+                if (window.BackChannel && window.BackChannel.databaseService) {
+                    log('Closing active BackChannel database connection...');
+                    window.BackChannel.databaseService.close();
+                }
+                
+                // Also try to close any other potential connections
+                log('Attempting database deletion...');
+                
                 const deleteReq = indexedDB.deleteDatabase(dbName);
                 
                 deleteReq.onsuccess = () => {
@@ -147,14 +156,19 @@
                 deleteReq.onblocked = () => {
                     log(`Database deletion blocked! This means:`, 'error');
                     log('1. Another tab/window has the database open', 'error');
-                    log('2. The current page has an active connection', 'error');
+                    log('2. There may still be active connections', 'error');
                     log('3. Try refreshing this page and try again', 'error');
+                    
+                    // Add timeout to resolve anyway
+                    setTimeout(() => {
+                        log('Continuing after 3 second timeout...', 'info');
+                    }, 3000);
                 };
                 
                 // Add timeout
                 setTimeout(() => {
-                    log('Delete operation timed out after 5 seconds', 'error');
-                }, 5000);
+                    log('Delete operation timed out after 8 seconds', 'error');
+                }, 8000);
                 
             } catch (error) {
                 log(`Error during deletion: ${error.message}`, 'error');

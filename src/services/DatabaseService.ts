@@ -421,6 +421,33 @@ export class DatabaseService implements StorageInterface {
   }
 
   /**
+   * Closes the database connection and resets initialization state
+   * Must be called before attempting to delete the database
+   */
+  close(): void {
+    if (this.db) {
+      console.log('Closing database connection');
+      this.db.close();
+      this.db = null;
+      this.isInitialized = false;
+    }
+  }
+
+  /**
+   * Gets the current database name for external operations
+   */
+  getDatabaseName(): string {
+    return this.dbName;
+  }
+
+  /**
+   * Gets the current database version for external operations
+   */
+  getDatabaseVersion(): number {
+    return this.dbVersion;
+  }
+
+  /**
    * Executes a database transaction with error handling
    */
   private executeTransaction<T>(
