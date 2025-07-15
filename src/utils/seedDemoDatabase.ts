@@ -4,7 +4,12 @@
  * @author BackChannel Team
  */
 
-import { CaptureComment, DocumentMetadata, isCaptureComment } from '../types';
+import {
+  CaptureComment,
+  DocumentMetadata,
+  isCaptureComment,
+  FakeDbStore,
+} from '../types';
 import { DatabaseService } from '../services/DatabaseService';
 
 /**
@@ -66,6 +71,27 @@ function getDemoSeed(): DemoDatabaseSeed | null {
 }
 
 /**
+ * Get fake database configuration if available
+ */
+function getFakeDbConfig(): { dbName: string; dbVersion: number } | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  // Check if fakeData is available with database configuration
+  const fakeData = (window as unknown as { fakeData?: FakeDbStore }).fakeData;
+  if (fakeData && fakeData.databases && fakeData.databases.length > 0) {
+    const firstDb = fakeData.databases[0];
+    return {
+      dbName: firstDb.name,
+      dbVersion: firstDb.version,
+    };
+  }
+
+  return null;
+}
+
+/**
  * Check if the seed version has already been applied
  */
 function isVersionAlreadyApplied(version: string): boolean {
@@ -115,8 +141,24 @@ export async function seedDemoDatabaseIfNeeded(): Promise<boolean> {
   try {
     console.log(`Seeding demo database with version ${demoSeed.version}...`);
 
-    // Initialize database service
-    const dbService = new DatabaseService();
+    // Get database configuration from fake data if available
+    const fakeDbConfig = getFakeDbConfig();
+    let dbService: DatabaseService;
+
+    if (fakeDbConfig) {
+      console.log(
+        `Using fake database configuration: ${fakeDbConfig.dbName} v${fakeDbConfig.dbVersion}`
+      );
+      dbService = new DatabaseService(
+        undefined,
+        fakeDbConfig.dbName,
+        fakeDbConfig.dbVersion
+      );
+    } else {
+      console.log('Using default database configuration');
+      dbService = new DatabaseService();
+    }
+
     await dbService.initialize();
 
     // Clear existing data to ensure clean state

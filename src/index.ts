@@ -1,4 +1,4 @@
-import { PluginConfig, FeedbackState } from './types';
+import { PluginConfig, FeedbackState, FakeDbStore } from './types';
 import { DatabaseService } from './services/DatabaseService';
 import { seedDemoDatabaseIfNeeded } from './utils/seedDemoDatabase';
 import { BackChannelIcon } from './components/BackChannelIcon';
@@ -13,7 +13,28 @@ class BackChannelPlugin {
   constructor() {
     this.config = this.getDefaultConfig();
     this.state = FeedbackState.INACTIVE;
-    this.databaseService = new DatabaseService();
+    this.databaseService = this.createDatabaseService();
+  }
+
+  /**
+   * Create DatabaseService with fake database configuration if available
+   */
+  private createDatabaseService(): DatabaseService {
+    // Check if fakeData is available with database configuration
+    if (typeof window !== 'undefined') {
+      const fakeData = (window as unknown as { fakeData?: FakeDbStore })
+        .fakeData;
+      if (fakeData && fakeData.databases && fakeData.databases.length > 0) {
+        const firstDb = fakeData.databases[0];
+        console.log(
+          `Using fake database configuration: ${firstDb.name} v${firstDb.version}`
+        );
+        return new DatabaseService(undefined, firstDb.name, firstDb.version);
+      }
+    }
+
+    // Use default configuration
+    return new DatabaseService();
   }
 
   /**

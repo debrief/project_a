@@ -168,6 +168,29 @@
                 }
             ]
         };
+
+        // Fake database configuration for seeding
+        window.fakeData = {
+            version: 1,
+            databases: [
+                {
+                    name: 'BackChannelDB-Demo',
+                    version: 1,
+                    objectStores: [
+                        {
+                            name: 'metadata',
+                            keyPath: 'documentRootUrl',
+                            data: [window.demoDatabaseSeed.metadata]
+                        },
+                        {
+                            name: 'comments',
+                            keyPath: 'id',
+                            data: window.demoDatabaseSeed.comments
+                        }
+                    ]
+                }
+            ]
+        };
     </script>
     <script type="module" src="src/index.ts"></script>
     <script>

@@ -14,8 +14,8 @@ import {
 /**
  * Database configuration constants
  */
-const DB_NAME = 'BackChannelDB';
-const DB_VERSION = 1;
+const DEFAULT_DB_NAME = 'BackChannelDB';
+const DEFAULT_DB_VERSION = 1;
 const COMMENTS_STORE = 'comments';
 const METADATA_STORE = 'metadata';
 
@@ -38,12 +38,18 @@ export class DatabaseService implements StorageInterface {
   private db: IDBDatabase | null = null;
   private readonly fakeIndexedDb?: IDBFactory;
   private isInitialized = false;
+  private readonly dbName: string;
+  private readonly dbVersion: number;
 
   /**
    * @param fakeIndexedDb Optional fake IndexedDB implementation for testing
+   * @param dbName Optional database name (defaults to 'BackChannelDB')
+   * @param dbVersion Optional database version (defaults to 1)
    */
-  constructor(fakeIndexedDb?: IDBFactory) {
+  constructor(fakeIndexedDb?: IDBFactory, dbName?: string, dbVersion?: number) {
     this.fakeIndexedDb = fakeIndexedDb;
+    this.dbName = dbName || DEFAULT_DB_NAME;
+    this.dbVersion = dbVersion || DEFAULT_DB_VERSION;
   }
 
   /**
@@ -77,7 +83,7 @@ export class DatabaseService implements StorageInterface {
         return;
       }
 
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      const request = indexedDB.open(this.dbName, this.dbVersion);
 
       request.onerror = () => {
         console.error('Database open error:', request.error);
@@ -132,7 +138,7 @@ export class DatabaseService implements StorageInterface {
    */
   private cacheBasicInfo(): void {
     try {
-      const dbId = `${DB_NAME}_v${DB_VERSION}`;
+      const dbId = `${this.dbName}_v${this.dbVersion}`;
       const urlRoot = this.getDocumentUrlRoot();
 
       localStorage.setItem(CACHE_KEYS.DATABASE_ID, dbId);
