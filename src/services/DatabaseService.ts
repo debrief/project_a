@@ -478,17 +478,11 @@ export class DatabaseService implements StorageInterface {
       // Check if current path contains the pattern path
       const matches = currentPath.includes(patternPath);
 
-      console.log(
-        `URL path matching: "${currentPath}" contains "${patternPath}" = ${matches}`
-      );
       return matches;
     } catch (error) {
       console.warn('URL parsing error in urlPathMatches:', error);
       // Fallback to simple string containment
       const matches = currentUrl.includes(documentRootUrl);
-      console.log(
-        `Fallback string matching: "${currentUrl}" contains "${documentRootUrl}" = ${matches}`
-      );
       return matches;
     }
   }
