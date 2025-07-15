@@ -208,13 +208,70 @@ async function deleteDatabase(dbName: string): Promise<void> {
 
 /**
  * Checks if a specific seed version has already been applied
+ * This now includes verification that the database actually exists and contains data
  * @param version Version string to check
- * @returns true if version was previously applied, false otherwise
+ * @returns true if version was previously applied AND database exists with data, false otherwise
  */
-function isVersionAlreadyApplied(version: string): boolean {
+async function isVersionAlreadyApplied(version: string): Promise<boolean> {
   try {
     const appliedVersion = localStorage.getItem(SEED_VERSION_KEY);
-    return appliedVersion === version;
+    if (appliedVersion !== version) {
+      console.log('Seed version mismatch or not found in localStorage');
+      return false;
+    }
+
+    // localStorage indicates version was applied, but we need to verify the database actually exists
+    const fakeDbConfig = getFakeDbConfig();
+    const dbName = fakeDbConfig?.dbName || 'BackChannelDB';
+
+    console.log('Verifying database actually exists and contains data...');
+
+    // Check if database exists
+    const dbExists = await databaseExists(dbName);
+    if (!dbExists) {
+      console.log(
+        'Database does not exist despite localStorage indicating it should'
+      );
+      // Clear the stale localStorage entry
+      localStorage.removeItem(SEED_VERSION_KEY);
+      return false;
+    }
+
+    // Database exists, but let's verify it actually contains the expected data
+    try {
+      const dbService = new DatabaseService(
+        undefined,
+        dbName,
+        fakeDbConfig?.dbVersion || 1
+      );
+      await dbService.initialize();
+
+      const metadata = await dbService.getMetadata();
+      const comments = await dbService.getComments();
+
+      const hasData = metadata !== null && comments.length > 0;
+      console.log('Database data verification:', {
+        hasMetadata: !!metadata,
+        commentCount: comments.length,
+        hasData,
+      });
+
+      if (!hasData) {
+        console.log(
+          'Database exists but is empty - clearing localStorage and re-seeding'
+        );
+        localStorage.removeItem(SEED_VERSION_KEY);
+        return false;
+      }
+
+      console.log('Database verification successful - seed already applied');
+      return true;
+    } catch (error) {
+      console.warn('Failed to verify database contents:', error);
+      // If we can't verify, assume we need to re-seed
+      localStorage.removeItem(SEED_VERSION_KEY);
+      return false;
+    }
   } catch (error) {
     console.warn('Failed to check applied seed version:', error);
     return false;
@@ -249,10 +306,10 @@ export async function seedDemoDatabaseIfNeeded(): Promise<boolean> {
     return false;
   }
 
-  // Step 2: Check if version is already applied
-  if (isVersionAlreadyApplied(demoSeed.version)) {
+  // Step 2: Check if version is already applied (with database verification)
+  if (await isVersionAlreadyApplied(demoSeed.version)) {
     console.log(
-      `Demo seed version ${demoSeed.version} already applied, skipping seeding`
+      `Demo seed version ${demoSeed.version} already applied and verified, skipping seeding`
     );
     return false;
   }
@@ -285,16 +342,37 @@ export async function seedDemoDatabaseIfNeeded(): Promise<boolean> {
     await dbService.initialize();
 
     // Step 6: Seed metadata
+    console.log('About to seed metadata:', demoSeed.metadata);
     await dbService.setMetadata(demoSeed.metadata);
     console.log('Demo metadata seeded successfully');
 
+    // Verify metadata was actually saved
+    const savedMetadata = await dbService.getMetadata();
+    console.log('Verified saved metadata:', savedMetadata);
+    if (!savedMetadata) {
+      console.error('ERROR: Metadata was not saved to database!');
+    }
+
     // Step 7: Seed comments
+    console.log('About to seed comments:', demoSeed.comments);
     for (const comment of demoSeed.comments) {
+      console.log('Seeding comment:', comment.id, comment.text);
       await dbService.addComment(comment);
     }
     console.log(
       `${demoSeed.comments.length} demo comments seeded successfully`
     );
+
+    // Verify comments were actually saved
+    const savedComments = await dbService.getComments();
+    console.log('Verified saved comments count:', savedComments.length);
+    console.log('Verified saved comments:', savedComments);
+    if (savedComments.length !== demoSeed.comments.length) {
+      console.error('ERROR: Comment count mismatch!', {
+        expected: demoSeed.comments.length,
+        actual: savedComments.length,
+      });
+    }
 
     // Step 8: Mark version as applied
     markVersionAsApplied(demoSeed.version);

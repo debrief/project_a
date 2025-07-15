@@ -22,13 +22,30 @@ const localStorageMock = {
   })
 };
 
-// Mock DatabaseService
+// Mock DatabaseService with simulated persistence
+let mockDatabaseState = {
+  metadata: null as any,
+  comments: [] as any[]
+};
+
+const mockDatabaseService = {
+  initialize: vi.fn().mockResolvedValue(undefined),
+  setMetadata: vi.fn().mockImplementation(async (metadata: any) => {
+    mockDatabaseState.metadata = metadata;
+  }),
+  addComment: vi.fn().mockImplementation(async (comment: any) => {
+    mockDatabaseState.comments.push(comment);
+  }),
+  getMetadata: vi.fn().mockImplementation(async () => {
+    return mockDatabaseState.metadata;
+  }),
+  getComments: vi.fn().mockImplementation(async () => {
+    return [...mockDatabaseState.comments];
+  })
+};
+
 vi.mock('../../src/services/DatabaseService', () => ({
-  DatabaseService: vi.fn().mockImplementation(() => ({
-    initialize: vi.fn().mockResolvedValue(undefined),
-    setMetadata: vi.fn().mockResolvedValue(undefined),
-    addComment: vi.fn().mockResolvedValue(undefined)
-  }))
+  DatabaseService: vi.fn().mockImplementation(() => mockDatabaseService)
 }));
 
 // Mock indexedDB
@@ -43,6 +60,27 @@ const mockIndexedDB = {
     };
     
     // Simulate successful deletion
+    setTimeout(() => {
+      if (request.onsuccess) {
+        request.onsuccess();
+      }
+    }, 0);
+    
+    return request;
+  }),
+  open: vi.fn().mockImplementation((name: string) => {
+    const request = {
+      onsuccess: null as any,
+      onerror: null as any,
+      onblocked: null as any,
+      result: { 
+        version: 1,
+        close: vi.fn()
+      },
+      error: null
+    };
+    
+    // Simulate successful database open
     setTimeout(() => {
       if (request.onsuccess) {
         request.onsuccess();
@@ -66,11 +104,15 @@ describe('seedDemoDatabase', () => {
       writable: true
     });
 
-    // Mock window
+    // Mock window (clear any existing properties)
     Object.defineProperty(global, 'window', {
       value: {},
       writable: true
     });
+    
+    // Clear window properties
+    delete (global.window as any).demoDatabaseSeed;
+    delete (global.window as any).fakeData;
 
     // Clear localStorage mock
     localStorageMock.store.clear();
@@ -78,6 +120,12 @@ describe('seedDemoDatabase', () => {
     
     // Reset indexedDB mock
     mockIndexedDB.deleteDatabase.mockClear();
+    mockIndexedDB.open.mockClear();
+    
+    // Reset database service mocks to default values
+    mockDatabaseState.metadata = null;
+    mockDatabaseState.comments = [];
+    vi.clearAllMocks();
   });
 
   describe('seedDemoDatabaseIfNeeded', () => {
@@ -86,7 +134,7 @@ describe('seedDemoDatabase', () => {
       expect(result).toBe(false);
     });
 
-    it('should return false when demo seed version is already applied', async () => {
+    it('should return false when demo seed version is already applied AND database has data', async () => {
       // Set up demo seed
       (global.window as any).demoDatabaseSeed = {
         version: 'demo-v1',
@@ -94,14 +142,94 @@ describe('seedDemoDatabase', () => {
           documentTitle: 'Test Doc',
           documentRootUrl: 'file://'
         },
-        comments: []
+        comments: [
+          {
+            id: 'comment-1',
+            text: 'Test comment',
+            pageUrl: 'file:///test.html',
+            timestamp: '2024-01-01T12:00:00.000Z',
+            location: '/html/body/p[1]'
+          }
+        ]
+      };
+
+      // Set up fake data for database configuration
+      (global.window as any).fakeData = {
+        version: 1,
+        databases: [
+          {
+            name: 'BackChannelDB-Test',
+            version: 1,
+            objectStores: []
+          }
+        ]
       };
 
       // Mark version as already applied
       localStorageMock.store.set('backchannel-seed-version', 'demo-v1');
 
+      // Pre-populate mock database state to simulate existing data
+      mockDatabaseState.metadata = {
+        documentTitle: 'Test Doc',
+        documentRootUrl: 'file://'
+      };
+      mockDatabaseState.comments = [
+        {
+          id: 'comment-1',
+          text: 'Test comment',
+          pageUrl: 'file:///test.html',
+          timestamp: '2024-01-01T12:00:00.000Z',
+          location: '/html/body/p[1]'
+        }
+      ];
+
       const result = await seedDemoDatabaseIfNeeded();
       expect(result).toBe(false);
+    });
+
+    it('should re-seed when version is applied but database is empty', async () => {
+      // Set up demo seed
+      (global.window as any).demoDatabaseSeed = {
+        version: 'demo-v1',
+        metadata: {
+          documentTitle: 'Test Doc',
+          documentRootUrl: 'file://'
+        },
+        comments: [
+          {
+            id: 'comment-1',
+            text: 'Test comment',
+            pageUrl: 'file:///test.html',
+            timestamp: '2024-01-01T12:00:00.000Z',
+            location: '/html/body/p[1]'
+          }
+        ]
+      };
+
+      // Set up fake data for database configuration
+      (global.window as any).fakeData = {
+        version: 1,
+        databases: [
+          {
+            name: 'BackChannelDB-Test',
+            version: 1,
+            objectStores: []
+          }
+        ]
+      };
+
+      // Mark version as already applied
+      localStorageMock.store.set('backchannel-seed-version', 'demo-v1');
+
+      // Keep mock database state empty (simulating database exists but is empty)
+      // mockDatabaseState.metadata = null; // already null from beforeEach
+      // mockDatabaseState.comments = []; // already empty from beforeEach
+
+      const result = await seedDemoDatabaseIfNeeded();
+      expect(result).toBe(true);
+      
+      // Verify localStorage was cleared due to empty database
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('backchannel-seed-version');
     });
 
     it('should seed database when valid seed is present and version not applied', async () => {
@@ -119,6 +247,18 @@ describe('seedDemoDatabase', () => {
             pageUrl: 'file:///test.html',
             timestamp: '2024-01-01T12:00:00.000Z',
             location: '/html/body/p[1]'
+          }
+        ]
+      };
+
+      // Set up fake data for database configuration
+      (global.window as any).fakeData = {
+        version: 1,
+        databases: [
+          {
+            name: 'BackChannelDB-Test',
+            version: 1,
+            objectStores: []
           }
         ]
       };
@@ -171,6 +311,18 @@ describe('seedDemoDatabase', () => {
         ]
       };
 
+      // Set up fake data for database configuration
+      (global.window as any).fakeData = {
+        version: 1,
+        databases: [
+          {
+            name: 'BackChannelDB-Test',
+            version: 1,
+            objectStores: []
+          }
+        ]
+      };
+
       const result = await seedDemoDatabaseIfNeeded();
       expect(result).toBe(true);
     });
@@ -186,6 +338,18 @@ describe('seedDemoDatabase', () => {
           documentRootUrl: 'file://'
         },
         comments: []
+      };
+
+      // Set up fake data for database configuration
+      (global.window as any).fakeData = {
+        version: 1,
+        databases: [
+          {
+            name: 'BackChannelDB-Test',
+            version: 1,
+            objectStores: []
+          }
+        ]
       };
 
       // Mark version as already applied

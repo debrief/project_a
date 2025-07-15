@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Seeding Process</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        button { margin: 5px; padding: 10px 15px; cursor: pointer; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        .log-entry { margin: 5px 0; padding: 5px; border-left: 3px solid #007acc; }
+    </style>
+</head>
+<body>
+    <h1>Debug Seeding Process</h1>
+    
+    <div class="section">
+        <h2>Step 1: Check Initial State</h2>
+        <button onclick="checkInitialState()">Check Initial State</button>
+        <div id="initial-state"></div>
+    </div>
+    
+    <div class="section">
+        <h2>Step 2: Setup Demo Data</h2>
+        <button onclick="setupDemoData()">Setup Demo Data</button>
+        <div id="demo-data"></div>
+    </div>
+    
+    <div class="section">
+        <h2>Step 3: Clear Database</h2>
+        <button onclick="clearDatabase()">Clear Database</button>
+        <div id="clear-db"></div>
+    </div>
+    
+    <div class="section">
+        <h2>Step 4: Run Seeding Process</h2>
+        <button onclick="runSeeding()">Run Seeding Process</button>
+        <div id="seeding-result"></div>
+    </div>
+    
+    <div class="section">
+        <h2>Step 5: Verify Database Contents</h2>
+        <button onclick="verifyDatabase()">Verify Database Contents</button>
+        <div id="verify-db"></div>
+    </div>
+    
+    <div class="section">
+        <h2>Console Logs</h2>
+        <button onclick="clearLogs()">Clear Logs</button>
+        <div id="console-logs"></div>
+    </div>
+
+    <script>
+        const logs = [];
+        
+        // Capture console logs
+        const originalConsoleLog = console.log;
+        const originalConsoleError = console.error;
+        
+        console.log = function(...args) {
+            logs.push({ type: 'log', message: args.join(' '), timestamp: new Date().toISOString() });
+            originalConsoleLog.apply(console, args);
+            updateLogs();
+        };
+        
+        console.error = function(...args) {
+            logs.push({ type: 'error', message: args.join(' '), timestamp: new Date().toISOString() });
+            originalConsoleError.apply(console, args);
+            updateLogs();
+        };
+        
+        function updateLogs() {
+            const logContainer = document.getElementById('console-logs');
+            logContainer.innerHTML = logs.map(log => 
+                `<div class="log-entry ${log.type}">
+                    <span style="color: #666;">[${log.timestamp}]</span> 
+                    <span class="${log.type}">${log.message}</span>
+                </div>`
+            ).join('');
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        function clearLogs() {
+            logs.length = 0;
+            updateLogs();
+        }
+        
+        function log(message, type = 'info') {
+            const container = document.getElementById('console-logs');
+            const div = document.createElement('div');
+            div.className = `log-entry ${type}`;
+            div.innerHTML = `<span style="color: #666;">[${new Date().toLocaleTimeString()}]</span> ${message}`;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        async function checkInitialState() {
+            const container = document.getElementById('initial-state');
+            container.innerHTML = '<p>Checking initial state...</p>';
+            
+            try {
+                const info = {
+                    hasIndexedDB: !!window.indexedDB,
+                    hasBackChannel: !!window.BackChannel,
+                    hasDemoSeed: !!window.demoDatabaseSeed,
+                    hasFakeData: !!window.fakeData,
+                    localStorageKeys: []
+                };
+                
+                // Check localStorage
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.startsWith('backchannel')) {
+                        info.localStorageKeys.push({ key, value: localStorage.getItem(key) });
+                    }
+                }
+                
+                container.innerHTML = `<pre>${JSON.stringify(info, null, 2)}</pre>`;
+            } catch (error) {
+                container.innerHTML = `<div class="error">Error checking initial state: ${error.message}</div>`;
+            }
+        }
+        
+        async function setupDemoData() {
+            const container = document.getElementById('demo-data');
+            container.innerHTML = '<p>Setting up demo data...</p>';
+            
+            try {
+                // Setup demo seed data (similar to fakeEnabledData.ts)
+                window.demoDatabaseSeed = {
+                    version: 'debug-seeding-test',
+                    metadata: {
+                        documentTitle: 'Debug Seeding Test',
+                        documentRootUrl: window.location.pathname,
+                        documentId: 'debug-seeding-001',
+                        reviewer: 'Debug User'
+                    },
+                    comments: [
+                        {
+                            id: 'debug-comment-001',
+                            text: 'Debug test comment 1',
+                            pageUrl: window.location.href,
+                            timestamp: new Date().toISOString(),
+                            location: '/html/body/h1',
+                            snippet: 'Debug Seeding Process',
+                            author: 'Debug User'
+                        },
+                        {
+                            id: 'debug-comment-002',
+                            text: 'Debug test comment 2',
+                            pageUrl: window.location.href,
+                            timestamp: new Date().toISOString(),
+                            location: '/html/body/div',
+                            snippet: 'Test content',
+                            author: 'Debug User'
+                        }
+                    ]
+                };
+
+                // Setup fake data
+                window.fakeData = {
+                    version: 1,
+                    databases: [
+                        {
+                            name: 'BackChannelDB-DebugTest',
+                            version: 1,
+                            objectStores: [
+                                {
+                                    name: 'metadata',
+                                    keyPath: 'documentRootUrl',
+                                    data: [window.demoDatabaseSeed.metadata]
+                                },
+                                {
+                                    name: 'comments',
+                                    keyPath: 'id',
+                                    data: window.demoDatabaseSeed.comments
+                                }
+                            ]
+                        }
+                    ]
+                };
+                
+                container.innerHTML = `<div class="success">Demo data setup complete</div>
+                    <pre>${JSON.stringify(window.demoDatabaseSeed, null, 2)}</pre>`;
+            } catch (error) {
+                container.innerHTML = `<div class="error">Error setting up demo data: ${error.message}</div>`;
+            }
+        }
+        
+        async function clearDatabase() {
+            const container = document.getElementById('clear-db');
+            container.innerHTML = '<p>Clearing database...</p>';
+            
+            try {
+                // Clear localStorage
+                const keys = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.startsWith('backchannel')) {
+                        keys.push(key);
+                    }
+                }
+                keys.forEach(key => localStorage.removeItem(key));
+                
+                // Delete IndexedDB databases
+                const dbNames = ['BackChannelDB-DebugTest', 'BackChannelDB-EnabledTest', 'BackChannelDB-Demo'];
+                for (const dbName of dbNames) {
+                    await new Promise((resolve) => {
+                        const deleteReq = indexedDB.deleteDatabase(dbName);
+                        deleteReq.onsuccess = () => resolve();
+                        deleteReq.onerror = () => resolve();
+                        deleteReq.onblocked = () => resolve();
+                        setTimeout(() => resolve(), 2000);
+                    });
+                }
+                
+                container.innerHTML = `<div class="success">Database cleared successfully</div>`;
+            } catch (error) {
+                container.innerHTML = `<div class="error">Error clearing database: ${error.message}</div>`;
+            }
+        }
+        
+        async function runSeeding() {
+            const container = document.getElementById('seeding-result');
+            container.innerHTML = '<p>Running seeding process...</p>';
+            
+            try {
+                if (!window.demoDatabaseSeed) {
+                    throw new Error('Demo seed data not available. Run "Setup Demo Data" first.');
+                }
+                
+                // Import and run the seeding process
+                const seedModule = await import('/src/utils/seedDemoDatabase.ts');
+                const result = await seedModule.seedDemoDatabaseIfNeeded();
+                
+                container.innerHTML = `<div class="success">Seeding process completed: ${result}</div>`;
+            } catch (error) {
+                container.innerHTML = `<div class="error">Error running seeding: ${error.message}</div>`;
+            }
+        }
+        
+        async function verifyDatabase() {
+            const container = document.getElementById('verify-db');
+            container.innerHTML = '<p>Verifying database contents...</p>';
+            
+            try {
+                if (!window.fakeData) {
+                    throw new Error('Fake data not available. Run "Setup Demo Data" first.');
+                }
+                
+                const dbName = window.fakeData.databases[0].name;
+                const DatabaseService = (await import('/src/services/DatabaseService.ts')).DatabaseService;
+                
+                const dbService = new DatabaseService(undefined, dbName, 1);
+                await dbService.initialize();
+                
+                const metadata = await dbService.getMetadata();
+                const comments = await dbService.getComments();
+                
+                const result = {
+                    databaseName: dbName,
+                    metadata: metadata,
+                    commentCount: comments.length,
+                    comments: comments
+                };
+                
+                container.innerHTML = `<div class="success">Database verification complete</div>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>`;
+            } catch (error) {
+                container.innerHTML = `<div class="error">Error verifying database: ${error.message}</div>`;
+            }
+        }
+        
+        // Initialize
+        window.addEventListener('load', () => {
+            log('Debug seeding tool loaded');
+        });
+    </script>
+</body>
+</html>

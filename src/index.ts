@@ -3,6 +3,12 @@ import { DatabaseService } from './services/DatabaseService';
 import { seedDemoDatabaseIfNeeded } from './utils/seedDemoDatabase';
 import { BackChannelIcon } from './components/BackChannelIcon';
 
+// Force the custom element to be registered
+if (typeof window !== 'undefined') {
+  // Simply referencing the class ensures it's not tree-shaken
+  window.BackChannelIcon = BackChannelIcon;
+}
+
 class BackChannelPlugin {
   private config: PluginConfig;
   private state: FeedbackState;
@@ -395,7 +401,10 @@ declare global {
       getState: () => FeedbackState;
       getConfig: () => PluginConfig;
       enableBackChannel: () => Promise<void>;
+      isEnabled: boolean;
+      databaseService: DatabaseService;
     };
+    BackChannelIcon: typeof BackChannelIcon;
   }
 }
 
@@ -405,6 +414,12 @@ if (typeof window !== 'undefined') {
     getState: () => backChannelInstance.getState(),
     getConfig: () => backChannelInstance.getConfig(),
     enableBackChannel: () => backChannelInstance.enableBackChannel(),
+    get isEnabled() {
+      return backChannelInstance['isEnabled'];
+    },
+    get databaseService() {
+      return backChannelInstance['databaseService'];
+    },
   };
 
   // Auto-initialize with default configuration when window loads

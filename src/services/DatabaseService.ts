@@ -179,6 +179,8 @@ export class DatabaseService implements StorageInterface {
       throw new Error('Database not initialized');
     }
 
+    console.log('DatabaseService: Setting metadata in database:', metadata);
+
     return this.executeTransaction(
       [METADATA_STORE],
       'readwrite',
@@ -186,8 +188,17 @@ export class DatabaseService implements StorageInterface {
         const store = transaction.objectStore(METADATA_STORE);
         return new Promise<void>((resolve, reject) => {
           const request = store.put(metadata);
-          request.onsuccess = () => resolve();
-          request.onerror = () => reject(request.error);
+          request.onsuccess = () => {
+            console.log('DatabaseService: Metadata put operation succeeded');
+            resolve();
+          };
+          request.onerror = () => {
+            console.error(
+              'DatabaseService: Metadata put operation failed:',
+              request.error
+            );
+            reject(request.error);
+          };
         });
       }
     );
@@ -228,6 +239,8 @@ export class DatabaseService implements StorageInterface {
       throw new Error('Database not initialized');
     }
 
+    console.log('DatabaseService: Adding comment to database:', comment);
+
     return this.executeTransaction(
       [COMMENTS_STORE],
       'readwrite',
@@ -235,8 +248,22 @@ export class DatabaseService implements StorageInterface {
         const store = transaction.objectStore(COMMENTS_STORE);
         return new Promise<void>((resolve, reject) => {
           const request = store.add(comment);
-          request.onsuccess = () => resolve();
-          request.onerror = () => reject(request.error);
+          request.onsuccess = () => {
+            console.log(
+              'DatabaseService: Comment add operation succeeded for:',
+              comment.id
+            );
+            resolve();
+          };
+          request.onerror = () => {
+            console.error(
+              'DatabaseService: Comment add operation failed:',
+              request.error,
+              'for comment:',
+              comment.id
+            );
+            reject(request.error);
+          };
         });
       }
     );
@@ -522,16 +549,24 @@ export class DatabaseService implements StorageInterface {
       const transaction = this.db.transaction(storeNames, mode);
 
       transaction.oncomplete = () => {
-        // Transaction completed successfully
+        console.log(
+          'Transaction completed successfully for stores:',
+          storeNames
+        );
       };
 
       transaction.onerror = () => {
-        console.error('Transaction error:', transaction.error);
+        console.error(
+          'Transaction error for stores:',
+          storeNames,
+          'Error:',
+          transaction.error
+        );
         reject(transaction.error);
       };
 
       transaction.onabort = () => {
-        console.error('Transaction aborted');
+        console.error('Transaction aborted for stores:', storeNames);
         reject(new Error('Transaction aborted'));
       };
 

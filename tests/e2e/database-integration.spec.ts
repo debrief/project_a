@@ -19,28 +19,37 @@ async function evaluateInBrowser<T>(page: Page, fn: () => Promise<T>): Promise<T
  */
 async function clearBrowserStorage(page: Page) {
   await page.evaluate(async () => {
-    // Clear localStorage
-    localStorage.clear();
-    
-    // Clear IndexedDB databases
-    const dbNames = ['BackChannelDB', 'BackChannelDB-Demo', 'BackChannelDB-EnabledTest'];
-    
-    for (const dbName of dbNames) {
-      try {
-        await new Promise<void>((resolve, reject) => {
-          const deleteReq = indexedDB.deleteDatabase(dbName);
-          deleteReq.onsuccess = () => resolve();
-          deleteReq.onerror = () => reject(deleteReq.error);
-          deleteReq.onblocked = () => {
-            console.warn(`Database ${dbName} deletion blocked`);
-            resolve(); // Continue anyway
-          };
-          // Add timeout for blocked operations
-          setTimeout(() => resolve(), 1000);
-        });
-      } catch (error) {
-        console.warn(`Failed to delete database ${dbName}:`, error);
+    try {
+      // Clear localStorage (may fail due to security restrictions)
+      if (typeof localStorage !== 'undefined') {
+        localStorage.clear();
       }
+    } catch (error) {
+      console.warn('Failed to clear localStorage:', error);
+    }
+    
+    try {
+      // Clear IndexedDB databases
+      if (typeof indexedDB !== 'undefined') {
+        const dbNames = ['BackChannelDB', 'BackChannelDB-Demo', 'BackChannelDB-EnabledTest'];
+        
+        for (const dbName of dbNames) {
+          try {
+            await new Promise<void>((resolve) => {
+              const deleteReq = indexedDB.deleteDatabase(dbName);
+              deleteReq.onsuccess = () => resolve();
+              deleteReq.onerror = () => resolve(); // Continue anyway
+              deleteReq.onblocked = () => resolve(); // Continue anyway
+              // Add timeout for blocked operations
+              setTimeout(() => resolve(), 1000);
+            });
+          } catch (error) {
+            console.warn(`Failed to delete database ${dbName}:`, error);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to clear IndexedDB:', error);
     }
   });
 }
@@ -106,11 +115,11 @@ async function setupDemoData(page: Page) {
 
 test.describe('Database Integration Tests', () => {
   test.beforeEach(async ({ page }) => {
+    // Navigate to a test page first to establish context
+    await page.goto('/tests/debug-db.html');
+    
     // Clear all storage before each test
     await clearBrowserStorage(page);
-    
-    // Navigate to a test page
-    await page.goto('/tests/debug-db.html');
     
     // Wait for page to be fully loaded
     await page.waitForLoadState('networkidle');
