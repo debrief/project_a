@@ -1,9 +1,4 @@
-import {
-  PluginConfig,
-  FeedbackState,
-  FakeDbStore,
-  BackChannelGlobal,
-} from './types';
+import { PluginConfig, FeedbackState, FakeDbStore } from './types';
 import { DatabaseService } from './services/DatabaseService';
 import { seedDemoDatabaseIfNeeded } from './utils/seedDemoDatabase';
 import { BackChannelIcon } from './components/BackChannelIcon';
@@ -128,8 +123,8 @@ class BackChannelPlugin {
       // Try to create the Lit component
       const iconElement = document.createElement('backchannel-icon');
 
-      // Check if it's a proper custom element by checking its instance type
-      if (iconElement instanceof BackChannelIcon) {
+      // Check if it's a proper custom element by checking for connectedCallback
+      if (iconElement.connectedCallback) {
         console.log('Lit component available, using it');
 
         // Cast to the proper type
@@ -191,6 +186,102 @@ class BackChannelPlugin {
     console.log('Fallback icon created');
   }
 
+  private injectStyles(): void {
+    // Check if styles are already injected
+    if (document.getElementById('backchannel-styles')) {
+      return;
+    }
+
+    const styleElement = document.createElement('style');
+    styleElement.id = 'backchannel-styles';
+    styleElement.textContent = `
+      .backchannel-icon {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        width: 48px;
+        height: 48px;
+        background: #ffffff;
+        border: 2px solid #007acc;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        z-index: 10000;
+        user-select: none;
+      }
+      
+      .backchannel-icon:hover {
+        background: #f8f9fa;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        transform: translateY(-2px);
+      }
+      
+      .backchannel-icon:focus {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(0, 122, 204, 0.3);
+      }
+      
+      .backchannel-icon.inactive {
+        color: #6c757d;
+        border-color: #6c757d;
+      }
+      
+      .backchannel-icon.inactive .backchannel-icon-badge {
+        fill: #6c757d;
+      }
+      
+      .backchannel-icon.capture {
+        color: #007acc;
+        border-color: #007acc;
+        background: #e3f2fd;
+      }
+      
+      .backchannel-icon.capture .backchannel-icon-badge {
+        fill: #007acc;
+      }
+      
+      .backchannel-icon.review {
+        color: #28a745;
+        border-color: #28a745;
+        background: #e8f5e8;
+      }
+      
+      .backchannel-icon.review .backchannel-icon-badge {
+        fill: #28a745;
+      }
+      
+      @media (max-width: 768px) {
+        .backchannel-icon {
+          top: 15px;
+          right: 15px;
+          width: 44px;
+          height: 44px;
+        }
+      }
+      
+      @media (max-width: 480px) {
+        .backchannel-icon {
+          top: 10px;
+          right: 10px;
+          width: 40px;
+          height: 40px;
+        }
+      }
+      
+      @media print {
+        .backchannel-icon {
+          display: none;
+        }
+      }
+    `;
+
+    document.head.appendChild(styleElement);
+  }
+
   private handleIconClick(): void {
     console.log(
       'BackChannel icon clicked, current state:',
@@ -221,6 +312,34 @@ class BackChannelPlugin {
       case FeedbackState.REVIEW:
         this.setState(FeedbackState.INACTIVE);
         break;
+    }
+  }
+
+  private async checkMetadataOrCreatePackage(): Promise<void> {
+    try {
+      const metadata = await this.databaseService.getMetadata();
+
+      if (metadata) {
+        // Metadata exists, activate capture mode
+        console.log('Existing metadata found:', metadata);
+        this.setState(FeedbackState.CAPTURE);
+      } else {
+        // No metadata, show package creation modal
+        console.log('No metadata found, opening package creation modal');
+        if (this.icon && typeof this.icon.openPackageModal === 'function') {
+          this.icon.openPackageModal();
+        } else {
+          console.warn('Package modal not available');
+        }
+      }
+    } catch (error) {
+      console.error('Error checking metadata:', error);
+      // Fallback to opening modal on error
+      if (this.icon && typeof this.icon.openPackageModal === 'function') {
+        this.icon.openPackageModal();
+      } else {
+        console.warn('Package modal not available');
+      }
     }
   }
 
@@ -277,7 +396,14 @@ const backChannelInstance = new BackChannelPlugin();
 
 declare global {
   interface Window {
-    BackChannel: BackChannelGlobal;
+    BackChannel: {
+      init: (config?: PluginConfig) => Promise<void>;
+      getState: () => FeedbackState;
+      getConfig: () => PluginConfig;
+      enableBackChannel: () => Promise<void>;
+      isEnabled: boolean;
+      databaseService: DatabaseService;
+    };
     BackChannelIcon: typeof BackChannelIcon;
   }
 }
@@ -288,6 +414,12 @@ if (typeof window !== 'undefined') {
     getState: () => backChannelInstance.getState(),
     getConfig: () => backChannelInstance.getConfig(),
     enableBackChannel: () => backChannelInstance.enableBackChannel(),
+    get isEnabled() {
+      return backChannelInstance['isEnabled'];
+    },
+    get databaseService() {
+      return backChannelInstance['databaseService'];
+    },
   };
 
   // Auto-initialize with default configuration when window loads

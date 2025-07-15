@@ -150,163 +150,48 @@ test.describe('BackChannel Comprehensive Integration Tests', () => {
   });
 
   test.describe('URL-based Enabled/Disabled Detection', () => {
-    test('should enable BackChannel on pages matching feedback package URL pattern', async ({ page }) => {
-      // Set up console log and error collection
-      const logs: string[] = [];
-      const errors: string[] = [];
-      page.on('console', msg => {
-        logs.push(msg.text());
-        if (msg.type() === 'error') {
-          errors.push(msg.text());
-        }
-      });
-      
-      // Navigate to enabled section
+    test('should enable BackChannel on pages matching feedback package URL snippet', async ({ page }) => {
+      // The documentRootUrl in the seed data is just '/enabled-test/enabled/'.
+      // This test verifies that BackChannel enables itself because the current URL
+      // contains this snippet.
+
+      // Navigate to a page that will be matched by the URL snippet.
       await page.goto('/tests/e2e/fixtures/enabled-test/enabled/index.html');
       await waitForBackChannelInit(page);
-      
-      // Wait for the window 'load' event to ensure BackChannel auto-initializes
-      await page.waitForLoadState('load');
-      
-      // Wait for the icon to be rendered, which indicates UI is ready
-      await page.waitForFunction(() => document.querySelector('backchannel-icon'), { timeout: 10000 });
-      
-      // Debug: Check BackChannel state and database configuration
-      const debugInfo: DebugInfo = await page.evaluate(async () => {
-        const info: DebugInfo = {
-          backChannelExists: !!window.BackChannel,
-          state: window.BackChannel ? window.BackChannel.getState() : 'NOT_FOUND',
-          currentUrl: window.location.href,
-          demoDataExists: !!window.demoDatabaseSeed,
-          demoDataVersion: window.demoDatabaseSeed ? window.demoDatabaseSeed.version : 'NOT_FOUND',
-          demoDataDocumentRootUrl: window.demoDatabaseSeed ? window.demoDatabaseSeed.metadata.documentRootUrl : 'NOT_FOUND',
-          fakeDataExists: !!window.fakeData,
-          fakeDataDbName: window.fakeData && window.fakeData.databases ? window.fakeData.databases[0].name : 'NOT_FOUND',
-          iconCount: document.querySelectorAll('backchannel-icon').length,
-          isEnabled: window.BackChannel ? (window.BackChannel.getState() !== 'inactive') : 'NOT_FOUND'
-        };
-        
-        // Additional debug: Check what database BackChannel is actually using
-        if (window.BackChannel) {
-          info.hasInitMethod = typeof window.BackChannel.init === 'function';
-          info.hasGetStateMethod = typeof window.BackChannel.getState === 'function';
-          info.hasIsEnabledProp = 'isEnabled' in window.BackChannel;
-          info.databaseServiceExists = !!window.BackChannel.databaseService;
-          
-          if (window.BackChannel.databaseService) {
-            info.actualDbName = window.BackChannel.databaseService.getDatabaseName();
-            info.actualDbVersion = window.BackChannel.databaseService.getDatabaseVersion();
-            
-            // Check if BackChannel is enabled and get detailed info
-            try {
-              info.enabledCheckResult = await window.BackChannel.databaseService.isBackChannelEnabled();
-              
-              // Get metadata from the database to see what's actually stored
-              const metadata = await window.BackChannel.databaseService.getMetadata();
-              info.storedMetadata = metadata;
-              
-              const comments = await window.BackChannel.databaseService.getComments();
-              info.storedCommentCount = comments.length;
-              
-            } catch (error) {
-              info.enabledCheckError = error.message;
-            }
-          } else {
-            info.databaseServiceMissing = true;
-          }
-        } else {
-          info.backChannelMissing = true;
-        }
-        
-        // Check localStorage for seed version
-        try {
-          info.seedVersionInStorage = localStorage.getItem('backchannel-seed-version');
-          info.enabledStateInStorage = localStorage.getItem('backchannel-enabled-state');
-        } catch (error) {
-          info.storageError = error.message;
-        }
-        
-        console.log('Extended debug info:', info);
-        return info;
-      });
-      
-      console.log('Debug from test:', debugInfo);
-      console.log('Console logs:', logs);
-      console.log('Console errors:', errors);
-      
-      // Check that BackChannel is enabled
-      expect(debugInfo.state).toBe('active');
-      
-      // Check that icon exists
-      expect(debugInfo.iconCount).toBeGreaterThan(0);
+
+      // Check that BackChannel is enabled.
+      const isEnabled = await page.evaluate(() => window.BackChannel.isEnabled);
+      expect(isEnabled).toBe(true);
+
+      // Check that the icon is visible.
+      const iconCount = await page.evaluate(() => document.querySelectorAll('backchannel-icon').length);
+      expect(iconCount).toBeGreaterThan(0);
     });
 
     test('should enable BackChannel on subdirectory pages within enabled path', async ({ page }) => {
-      // Navigate to subdirectory within enabled section
+      // This test also relies on the '/enabled-test/enabled/' snippet.
       await page.goto('/tests/e2e/fixtures/enabled-test/enabled/subdir/index.html');
       await waitForBackChannelInit(page);
-      
-      // Check that BackChannel is enabled
-      const isEnabled = await page.evaluate(() => {
-        return (window.BackChannel.getState() !== 'inactive');
-      });
-      
+
+      const isEnabled = await page.evaluate(() => window.BackChannel.isEnabled);
       expect(isEnabled).toBe(true);
     });
 
-    test('should disable BackChannel on pages NOT matching feedback package URL pattern', async ({ page }) => {
-      // Set up console log collection
-      const logs: string[] = [];
-      page.on('console', msg => logs.push(msg.text()));
-      
-      // Navigate to disabled section
+    test('should disable BackChannel on pages NOT matching the URL snippet', async ({ page }) => {
+      // This page URL does not contain the '/enabled-test/enabled/' snippet.
       await page.goto('/tests/e2e/fixtures/enabled-test/disabled/index.html');
       await waitForBackChannelInit(page);
-      
-      // Wait for the window 'load' event to ensure BackChannel auto-initializes
-      await page.waitForLoadState('load');
-      await page.waitForTimeout(2000);
-      
-      // Debug: Check BackChannel state
-      const debugInfo: DebugInfo = await page.evaluate(async () => {
-        const info: DebugInfo = {
-          currentUrl: window.location.href,
-          backChannelExists: !!window.BackChannel,
-          state: window.BackChannel ? window.BackChannel.getState() : 'NOT_FOUND',
-          isEnabled: window.BackChannel ? (window.BackChannel.getState() !== 'inactive') : 'NOT_FOUND',
-        };
-        
-        // Check database contents
-        if (window.BackChannel && window.BackChannel.databaseService) {
-          try {
-            info.enabledCheckResult = await window.BackChannel.databaseService.isBackChannelEnabled();
-            const metadata = await window.BackChannel.databaseService.getMetadata();
-            info.storedMetadata = metadata;
-          } catch (error) {
-            info.databaseError = error.message;
-          }
-        }
-        
-        return info;
-      });
-      
-      console.log('Disabled test debug info:', debugInfo);
-      console.log('Disabled test console logs:', logs.filter(log => log.includes('URL path matching')));
-      
-      // Check that BackChannel is disabled
-      expect(debugInfo.state).toBe('inactive');
+
+      const isEnabled = await page.evaluate(() => window.BackChannel.isEnabled);
+      expect(isEnabled).toBe(false);
     });
 
-    test('should disable BackChannel on subdirectory pages outside enabled path', async ({ page }) => {
-      // Navigate to subdirectory within disabled section
+    test('should disable BackChannel on subdirectory pages outside the enabled path', async ({ page }) => {
+      // This page URL also does not contain the snippet.
       await page.goto('/tests/e2e/fixtures/enabled-test/disabled/subdir/index.html');
       await waitForBackChannelInit(page);
-      
-      // Check that BackChannel is disabled
-      const isEnabled = await page.evaluate(() => {
-        return (window.BackChannel.getState() !== 'inactive');
-      });
-      
+
+      const isEnabled = await page.evaluate(() => window.BackChannel.isEnabled);
       expect(isEnabled).toBe(false);
     });
   });
@@ -361,48 +246,28 @@ test.describe('BackChannel Comprehensive Integration Tests', () => {
   });
 
   test.describe('Cross-Page Navigation and State Persistence', () => {
-    test('should maintain enabled state when navigating within enabled path', async ({ page }) => {
-      // Start at enabled root
+    test('should maintain enabled state when navigating within an enabled path', async ({ page }) => {
+      // Start on a page that matches the snippet.
       await page.goto('/tests/e2e/fixtures/enabled-test/enabled/index.html');
       await waitForBackChannelInit(page);
-      
-      // Verify enabled
-      let isEnabled = await page.evaluate(() => {
-        return (window.BackChannel.getState() !== 'inactive');
-      });
-      expect(isEnabled).toBe(true);
-      
-      // Navigate to subdirectory
+      expect(await page.evaluate(() => window.BackChannel.isEnabled)).toBe(true);
+
+      // Navigate to another page that also matches.
       await page.goto('/tests/e2e/fixtures/enabled-test/enabled/subdir/index.html');
       await waitForBackChannelInit(page);
-      
-      // Verify still enabled
-      isEnabled = await page.evaluate(() => {
-        return (window.BackChannel.getState() !== 'inactive');
-      });
-      expect(isEnabled).toBe(true);
+      expect(await page.evaluate(() => window.BackChannel.isEnabled)).toBe(true);
     });
 
-    test('should change state when navigating from enabled to disabled path', async ({ page }) => {
-      // Start at enabled path
+    test('should change state when navigating from an enabled to a disabled path', async ({ page }) => {
+      // Start on a page that matches the snippet.
       await page.goto('/tests/e2e/fixtures/enabled-test/enabled/index.html');
       await waitForBackChannelInit(page);
-      
-      // Verify enabled
-      let isEnabled = await page.evaluate(() => {
-        return (window.BackChannel.getState() !== 'inactive');
-      });
-      expect(isEnabled).toBe(true);
-      
-      // Navigate to disabled path
+      expect(await page.evaluate(() => window.BackChannel.isEnabled)).toBe(true);
+
+      // Navigate to a page that does not match.
       await page.goto('/tests/e2e/fixtures/enabled-test/disabled/index.html');
       await waitForBackChannelInit(page);
-      
-      // Verify now disabled
-      isEnabled = await page.evaluate(() => {
-        return (window.BackChannel.getState() !== 'inactive');
-      });
-      expect(isEnabled).toBe(false);
+      expect(await page.evaluate(() => window.BackChannel.isEnabled)).toBe(false);
     });
   });
 
@@ -468,7 +333,7 @@ test.describe('BackChannel Comprehensive Integration Tests', () => {
     test('should gracefully handle missing IndexedDB', async ({ page }) => {
       // Temporarily disable IndexedDB
       await page.addInitScript(() => {
-        delete (window as any).indexedDB;
+        delete window.indexedDB;
       });
       
       await page.goto('/tests/debug-db.html');
