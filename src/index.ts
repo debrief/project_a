@@ -95,32 +95,32 @@ class BackChannelPlugin {
     try {
       // Try to create the Lit component
       const iconElement = document.createElement('backchannel-icon');
-      
+
       // Check if it's a proper custom element by checking for connectedCallback
       if (iconElement.connectedCallback) {
         console.log('Lit component available, using it');
-        
+
         // Cast to the proper type
         this.icon = iconElement as BackChannelIcon;
-        
+
         // Set properties directly
         this.icon.databaseService = this.databaseService;
         this.icon.state = this.state;
         this.icon.enabled = this.isEnabled;
-        
+
         // Add to DOM
         document.body.appendChild(this.icon);
-        
+
         // Wait for the component to be ready
         await this.icon.updateComplete;
-        
+
         // Set click handler
         if (typeof this.icon.setClickHandler === 'function') {
           this.icon.setClickHandler(() => this.handleIconClick());
         } else {
           this.icon.addEventListener('click', () => this.handleIconClick());
         }
-        
+
         console.log('Lit component initialized successfully');
       } else {
         throw new Error('Lit component not properly registered');
@@ -131,7 +131,7 @@ class BackChannelPlugin {
       this.initializeFallbackIcon();
     }
   }
-  
+
   private initializeFallbackIcon(): void {
     // Create a basic icon element if Lit component fails
     const icon = document.createElement('div');
