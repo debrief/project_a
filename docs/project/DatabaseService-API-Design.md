@@ -41,16 +41,7 @@ constructor(
 
 **Error Handling**: Throws error if IndexedDB is not supported or database cannot be opened.
 
-#### `clear(): Promise<void>`
-
-**Purpose**: Clears all data from the database (metadata and comments).
-
-**Behavior**:
-- Removes all entries from metadata object store
-- Removes all entries from comments object store
-- Provides clean slate for seeding or testing
-
-**Usage**: Called before seeding demo data to ensure clean state.
+**Note**: The `clear()` method is not included in this API design. Database clearing is handled by the seeding process through database deletion and recreation, which provides a cleaner and more reliable approach.
 
 ### Metadata Operations
 
@@ -143,14 +134,17 @@ constructor(
 1. Check if `window.demoDatabaseSeed` exists
 2. Validate seed data structure
 3. Check if version is already applied via localStorage
-4. If needed, create DatabaseService with fake config or default
-5. Clear existing data
-6. Seed metadata and comments
-7. Mark version as applied
+4. If needed, delete existing database completely
+5. Create fresh DatabaseService with fake config or default
+6. Initialize new database
+7. Seed metadata and comments
+8. Mark version as applied
 
 **Returns**: `true` if seeding was performed, `false` if skipped.
 
 **Usage**: Called during plugin initialization after DatabaseService initialization.
+
+**Database Recreation Approach**: Instead of clearing data from an existing database, the seeding process deletes the entire database and creates a fresh one. This ensures a completely clean state and handles any potential schema changes or corruption issues.
 
 ### Demo Data Structure
 
@@ -186,7 +180,21 @@ window.demoDatabaseSeed = {
 }
 ```
 
-### Database Configuration Support
+### Database Management Functions
+
+#### `deleteDatabase(dbName: string): Promise<void>`
+
+**Purpose**: Completely deletes an IndexedDB database.
+
+**Parameters**:
+- `dbName`: Name of the database to delete
+
+**Behavior**:
+- Uses `indexedDB.deleteDatabase()` to remove the entire database
+- Handles success, error, and blocked scenarios
+- Provides clean slate for database recreation
+
+**Usage**: Called internally by seeding process before creating fresh database.
 
 #### `getFakeDbConfig(): { dbName: string; dbVersion: number } | null`
 
@@ -242,9 +250,11 @@ window.demoDatabaseSeed = {
 
 1. **Plugin Constructor**: Creates DatabaseService via `createDatabaseService()`
 2. **Plugin.init()**: Calls `databaseService.initialize()`
-3. **Demo Seeding**: Calls `seedDemoDatabaseIfNeeded()`
+3. **Demo Seeding**: Calls `seedDemoDatabaseIfNeeded()` which may delete and recreate the database
 4. **Enabled Detection**: Calls `databaseService.isBackChannelEnabled()`
 5. **UI Setup**: Proceeds with UI initialization
+
+**Note**: The seeding process may delete and recreate the database, so any DatabaseService instances created before seeding should be reinitialized or recreated after seeding completes.
 
 ### Dependency Injection Pattern
 
@@ -262,6 +272,7 @@ this.packageModal.databaseService = this.databaseService;
 
 - **Database Errors**: Logged and re-thrown to prevent silent failures
 - **Seeding Errors**: Caught and logged, but don't prevent plugin initialization
+- **Database Deletion Errors**: Logged but don't prevent seeding (database may not exist)
 - **Cache Errors**: Logged as warnings, fall back to database queries
 
 ### Caching Strategy
@@ -269,6 +280,7 @@ this.packageModal.databaseService = this.databaseService;
 - **Enabled State**: Cached in localStorage with URL-based invalidation
 - **Database Info**: Basic database ID and URL root cached for performance
 - **Version Control**: Seed versions tracked in localStorage to prevent re-seeding
+- **Database Recreation**: Cache invalidation handled automatically when database is deleted and recreated
 
 ## Testing Considerations
 
@@ -290,6 +302,8 @@ Test fixtures should provide both:
 - **Efficient Caching**: LocalStorage caching reduces database queries
 - **Batch Operations**: Comments seeded in efficient loop
 - **Version Control**: Prevents unnecessary re-seeding
+- **Database Recreation**: Complete database deletion and recreation is faster than clearing large amounts of data
+- **Clean State**: Fresh database eliminates fragmentation and ensures optimal performance
 
 ## Future Extensibility
 
