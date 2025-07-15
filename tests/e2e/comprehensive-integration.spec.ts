@@ -183,7 +183,7 @@ test.describe('BackChannel Comprehensive Integration Tests', () => {
           fakeDataExists: !!window.fakeData,
           fakeDataDbName: window.fakeData && window.fakeData.databases ? window.fakeData.databases[0].name : 'NOT_FOUND',
           iconCount: document.querySelectorAll('backchannel-icon').length,
-          isEnabled: window.BackChannel ? window.BackChannel.isEnabled : 'NOT_FOUND'
+          isEnabled: window.BackChannel ? (window.BackChannel.getState() !== 'inactive') : 'NOT_FOUND'
         };
         
         // Additional debug: Check what database BackChannel is actually using
@@ -235,8 +235,7 @@ test.describe('BackChannel Comprehensive Integration Tests', () => {
       console.log('Console errors:', errors);
       
       // Check that BackChannel is enabled
-      const isEnabled = debugInfo.isEnabled;
-      expect(isEnabled).toBe(true);
+      expect(debugInfo.state).toBe('active');
       
       // Check that icon exists
       expect(debugInfo.iconCount).toBeGreaterThan(0);
@@ -249,7 +248,7 @@ test.describe('BackChannel Comprehensive Integration Tests', () => {
       
       // Check that BackChannel is enabled
       const isEnabled = await page.evaluate(() => {
-        return window.BackChannel.isEnabled;
+        return (window.BackChannel.getState() !== 'inactive');
       });
       
       expect(isEnabled).toBe(true);
@@ -274,7 +273,7 @@ test.describe('BackChannel Comprehensive Integration Tests', () => {
           currentUrl: window.location.href,
           backChannelExists: !!window.BackChannel,
           state: window.BackChannel ? window.BackChannel.getState() : 'NOT_FOUND',
-          isEnabled: window.BackChannel ? window.BackChannel.isEnabled : 'NOT_FOUND',
+          isEnabled: window.BackChannel ? (window.BackChannel.getState() !== 'inactive') : 'NOT_FOUND',
         };
         
         // Check database contents
@@ -295,8 +294,7 @@ test.describe('BackChannel Comprehensive Integration Tests', () => {
       console.log('Disabled test console logs:', logs.filter(log => log.includes('URL path matching')));
       
       // Check that BackChannel is disabled
-      const isEnabled = debugInfo.state !== 'inactive';
-      expect(isEnabled).toBe(false);
+      expect(debugInfo.state).toBe('inactive');
     });
 
     test('should disable BackChannel on subdirectory pages outside enabled path', async ({ page }) => {
@@ -306,7 +304,7 @@ test.describe('BackChannel Comprehensive Integration Tests', () => {
       
       // Check that BackChannel is disabled
       const isEnabled = await page.evaluate(() => {
-        return window.BackChannel.isEnabled;
+        return (window.BackChannel.getState() !== 'inactive');
       });
       
       expect(isEnabled).toBe(false);
@@ -370,7 +368,7 @@ test.describe('BackChannel Comprehensive Integration Tests', () => {
       
       // Verify enabled
       let isEnabled = await page.evaluate(() => {
-        return window.BackChannel.isEnabled;
+        return (window.BackChannel.getState() !== 'inactive');
       });
       expect(isEnabled).toBe(true);
       
@@ -380,7 +378,7 @@ test.describe('BackChannel Comprehensive Integration Tests', () => {
       
       // Verify still enabled
       isEnabled = await page.evaluate(() => {
-        return window.BackChannel.isEnabled;
+        return (window.BackChannel.getState() !== 'inactive');
       });
       expect(isEnabled).toBe(true);
     });
@@ -392,7 +390,7 @@ test.describe('BackChannel Comprehensive Integration Tests', () => {
       
       // Verify enabled
       let isEnabled = await page.evaluate(() => {
-        return window.BackChannel.isEnabled;
+        return (window.BackChannel.getState() !== 'inactive');
       });
       expect(isEnabled).toBe(true);
       
@@ -402,7 +400,7 @@ test.describe('BackChannel Comprehensive Integration Tests', () => {
       
       // Verify now disabled
       isEnabled = await page.evaluate(() => {
-        return window.BackChannel.isEnabled;
+        return (window.BackChannel.getState() !== 'inactive');
       });
       expect(isEnabled).toBe(false);
     });
@@ -470,7 +468,7 @@ test.describe('BackChannel Comprehensive Integration Tests', () => {
     test('should gracefully handle missing IndexedDB', async ({ page }) => {
       // Temporarily disable IndexedDB
       await page.addInitScript(() => {
-        delete window.indexedDB;
+        delete (window as any).indexedDB;
       });
       
       await page.goto('/tests/debug-db.html');
