@@ -100,8 +100,20 @@ function getFakeDbConfig(): { dbName: string; dbVersion: number } | null {
 function closeActiveConnections(dbName: string): void {
   try {
     // Check if BackChannel has an active database service that matches
-    if (typeof window !== 'undefined' && (window as any).BackChannel) {
-      const backChannel = (window as any).BackChannel;
+    if (
+      typeof window !== 'undefined' &&
+      (window as unknown as { BackChannel?: unknown }).BackChannel
+    ) {
+      const backChannel = (
+        window as unknown as {
+          BackChannel: {
+            databaseService?: {
+              getDatabaseName?: () => string;
+              close?: () => void;
+            };
+          };
+        }
+      ).BackChannel;
       if (
         backChannel.databaseService &&
         backChannel.databaseService.getDatabaseName &&
@@ -183,15 +195,26 @@ function markVersionAsApplied(version: string): void {
 /**
  * Seeds the database with demo data if the version hasn't been applied before
  * Deletes existing database and creates a fresh one for clean state
+ * @param retryCount Number of retries to attempt if demo seed not found
  * @returns true if seeding was performed, false if skipped
  */
-export async function seedDemoDatabaseIfNeeded(): Promise<boolean> {
+export async function seedDemoDatabaseIfNeeded(
+  retryCount = 3
+): Promise<boolean> {
   console.log('Checking if demo database seeding is needed...');
 
-  // Step 1: Check if demo seed is available
+  // Step 1: Check if demo seed is available (with retry for timing issues)
   const demoSeed = getDemoSeed();
+  if (!demoSeed && retryCount > 0) {
+    console.log(
+      `No demo seed found, retrying in 100ms (${retryCount} attempts left)...`
+    );
+    await new Promise(resolve => setTimeout(resolve, 100));
+    return seedDemoDatabaseIfNeeded(retryCount - 1);
+  }
+
   if (!demoSeed) {
-    console.log('No demo seed found in window.demoDatabaseSeed');
+    console.log('No demo seed found in window.demoDatabaseSeed after retries');
     return false;
   }
 
@@ -264,8 +287,8 @@ export async function forceReseedDemoDatabase(): Promise<boolean> {
     console.warn('Failed to clear seed version flag:', error);
   }
 
-  // Perform seeding
-  return await seedDemoDatabaseIfNeeded();
+  // Perform seeding with extended retry for forced operations
+  return await seedDemoDatabaseIfNeeded(5);
 }
 
 /**
