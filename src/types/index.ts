@@ -4,6 +4,8 @@
  * @author BackChannel Team
  */
 
+import type { DatabaseService } from '../services/DatabaseService';
+
 /**
  * Plugin operational states
  */
@@ -195,4 +197,19 @@ export interface FakeObjectStore {
   keyPath: string;
   /** Data items in the object store */
   data: unknown[];
+}
+
+/**
+ * Interface for the main BackChannelPlugin class.
+ * Used to avoid circular dependencies.
+ */
+export interface IBackChannelPlugin {
+  getDatabaseService(): Promise<DatabaseService>;
+}
+
+/**
+ * Interface for the BackChannelIcon component's public API.
+ */
+export interface BackChannelIconAPI {
+  setClickHandler(handler: () => void): void;
 }

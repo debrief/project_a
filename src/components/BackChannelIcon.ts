@@ -6,18 +6,18 @@
 
 import { LitElement, html, css, TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { FeedbackState } from '../types';
+import { BackChannelIconAPI, FeedbackState } from '../types';
+import type { IBackChannelPlugin } from '../types';
 import { PackageCreationModal } from './PackageCreationModal';
-import { DatabaseService } from '../services/DatabaseService';
 
 /**
  * BackChannel Icon Component
  * Provides the main UI element for accessing BackChannel functionality
  */
 @customElement('backchannel-icon')
-export class BackChannelIcon extends LitElement {
+export class BackChannelIcon extends LitElement implements BackChannelIconAPI {
   @property({ type: Object })
-  databaseService!: DatabaseService;
+  backChannelPlugin!: IBackChannelPlugin;
 
   @property({ type: String })
   state: FeedbackState = FeedbackState.INACTIVE;
@@ -25,7 +25,7 @@ export class BackChannelIcon extends LitElement {
   @property({ type: Boolean })
   enabled: boolean = false;
 
-  @property({ type: Function })
+  @property()
   clickHandler?: () => void;
 
   @state()
@@ -201,7 +201,7 @@ export class BackChannelIcon extends LitElement {
     this.setAttribute('state', this.state);
     this.setAttribute('enabled', this.enabled.toString());
     this.updateTitle();
-    this.initializeModal();
+    // The modal is now initialized lazily when the icon is clicked
 
     // Add event listeners to the host element
     this.addEventListener('click', this.handleClick);
@@ -258,11 +258,14 @@ export class BackChannelIcon extends LitElement {
   /**
    * Initialize the package creation modal
    */
-  private initializeModal(): void {
-    if (!this.databaseService) return;
+  private async initializeModal(): Promise<void> {
+    if (!this.backChannelPlugin) return;
+
+    // Lazily get the database service only when the modal is needed
+    const dbService = await this.backChannelPlugin.getDatabaseService();
 
     this.packageModal = new PackageCreationModal();
-    this.packageModal.databaseService = this.databaseService;
+    this.packageModal.databaseService = dbService;
     this.packageModal.options = {
       onSuccess: metadata => {
         console.log('Package created successfully:', metadata);
@@ -352,9 +355,13 @@ export class BackChannelIcon extends LitElement {
   /**
    * Handle click events
    */
-  private handleClick = (): void => {
+  private handleClick = async (): Promise<void> => {
     // If not enabled, the default action is to open the package creation modal
     if (!this.enabled) {
+      // Initialize the modal just-in-time
+      if (!this.packageModal) {
+        await this.initializeModal();
+      }
       this.openPackageModal();
       return;
     }

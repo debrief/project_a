@@ -1,4 +1,10 @@
-import { PluginConfig, FeedbackState, FakeDbStore } from './types';
+import {
+  PluginConfig,
+  FeedbackState,
+  FakeDbStore,
+  IBackChannelPlugin,
+  BackChannelIconAPI,
+} from './types';
 import { DatabaseService } from './services/DatabaseService';
 import { seedDemoDatabaseIfNeeded } from './utils/seedDemoDatabase';
 import { BackChannelIcon } from './components/BackChannelIcon';
@@ -9,23 +15,28 @@ if (typeof window !== 'undefined') {
   window.BackChannelIcon = BackChannelIcon;
 }
 
-class BackChannelPlugin {
+class BackChannelPlugin implements IBackChannelPlugin {
   private config: PluginConfig;
   private state: FeedbackState;
-  private databaseService: DatabaseService;
+  private databaseService: DatabaseService | null = null;
   private icon: BackChannelIcon | null = null;
   private isEnabled: boolean = false;
 
   constructor() {
     this.config = this.getDefaultConfig();
     this.state = FeedbackState.INACTIVE;
-    this.databaseService = this.createDatabaseService();
   }
 
   /**
-   * Create DatabaseService with fake database configuration if available
+   * Lazily creates and initializes the DatabaseService instance.
    */
-  private createDatabaseService(): DatabaseService {
+  public async getDatabaseService(): Promise<DatabaseService> {
+    if (this.databaseService) {
+      return this.databaseService;
+    }
+
+    let dbService: DatabaseService;
+
     // Check if fakeData is available with database configuration
     if (typeof window !== 'undefined') {
       const fakeData = (window as unknown as { fakeData?: FakeDbStore })
@@ -35,12 +46,28 @@ class BackChannelPlugin {
         console.log(
           `Using fake database configuration: ${firstDb.name} v${firstDb.version}`
         );
-        return new DatabaseService(undefined, firstDb.name, firstDb.version);
+        dbService = new DatabaseService(
+          undefined,
+          firstDb.name,
+          firstDb.version
+        );
+      } else {
+        // Use default configuration
+        dbService = new DatabaseService();
       }
+    } else {
+      // Fallback for non-browser environments
+      dbService = new DatabaseService();
     }
 
-    // Use default configuration
-    return new DatabaseService();
+    // Seed demo database if needed (BEFORE opening database)
+    await seedDemoDatabaseIfNeeded();
+
+    // Initialize the service (this opens the database)
+    await dbService.initialize();
+
+    this.databaseService = dbService;
+    return this.databaseService;
   }
 
   /**
@@ -74,15 +101,6 @@ class BackChannelPlugin {
     };
 
     try {
-      // Seed demo database if needed (BEFORE opening database)
-      await seedDemoDatabaseIfNeeded();
-
-      // Initialize database service (after seeding is complete)
-      await this.databaseService.initialize();
-
-      // Determine if BackChannel should be enabled for this page
-      this.isEnabled = await this.databaseService.isBackChannelEnabled();
-
       this.setupEventListeners();
 
       if (this.config.debugMode) {
@@ -114,6 +132,17 @@ class BackChannelPlugin {
 
   private async onDOMReady(): Promise<void> {
     console.log('BackChannel DOM ready');
+
+    // Check if BackChannel should be enabled for this page
+    try {
+      const db = await this.getDatabaseService();
+      this.isEnabled = await db.isBackChannelEnabled();
+      console.log('BackChannel enabled for this page:', this.isEnabled);
+    } catch (error) {
+      console.error('Failed to check if BackChannel should be enabled:', error);
+      // Keep isEnabled as false on error
+    }
+
     // Initialize UI components after DOM is ready
     await this.initializeUI();
   }
@@ -124,29 +153,33 @@ class BackChannelPlugin {
       const iconElement = document.createElement('backchannel-icon');
 
       // Check if it's a proper custom element by checking for connectedCallback
-      if (iconElement.connectedCallback) {
+      if (
+        (iconElement as unknown as { connectedCallback: () => void })
+          .connectedCallback
+      ) {
         console.log('Lit component available, using it');
 
         // Cast to the proper type
         this.icon = iconElement as BackChannelIcon;
 
         // Set properties directly
-        this.icon.databaseService = this.databaseService;
+        this.icon.backChannelPlugin = this;
         this.icon.state = this.state;
         this.icon.enabled = this.isEnabled;
 
         // Add to DOM
         document.body.appendChild(this.icon);
 
+        // Inject styles for the icon and other components
+        this.injectStyles();
+
         // Wait for the component to be ready
         await this.icon.updateComplete;
 
         // Set click handler
-        if (typeof this.icon.setClickHandler === 'function') {
-          this.icon.setClickHandler(() => this.handleIconClick());
-        } else {
-          this.icon.addEventListener('click', () => this.handleIconClick());
-        }
+        (this.icon as BackChannelIconAPI).setClickHandler(() =>
+          this.handleIconClick()
+        );
 
         console.log('Lit component initialized successfully');
       } else {
@@ -304,7 +337,7 @@ class BackChannelPlugin {
     // If enabled, handle normal state transitions
     switch (this.state) {
       case FeedbackState.INACTIVE:
-        this.setState(FeedbackState.CAPTURE);
+        this.checkMetadataOrCreatePackage();
         break;
       case FeedbackState.CAPTURE:
         this.setState(FeedbackState.REVIEW);
@@ -317,7 +350,8 @@ class BackChannelPlugin {
 
   private async checkMetadataOrCreatePackage(): Promise<void> {
     try {
-      const metadata = await this.databaseService.getMetadata();
+      const db = await this.getDatabaseService();
+      const metadata = await db.getMetadata();
 
       if (metadata) {
         // Metadata exists, activate capture mode
@@ -373,9 +407,11 @@ class BackChannelPlugin {
   async enableBackChannel(): Promise<void> {
     try {
       this.isEnabled = true;
-      this.databaseService.clearEnabledStateCache();
+      const db = await this.getDatabaseService();
+      db.clearEnabledStateCache();
 
-      // Update icon enabled state
+      // Update icon enabled state and set state to capture
+      this.setState(FeedbackState.CAPTURE);
       if (this.icon) {
         if (typeof this.icon.setEnabled === 'function') {
           this.icon.setEnabled(true);
@@ -401,8 +437,8 @@ declare global {
       getState: () => FeedbackState;
       getConfig: () => PluginConfig;
       enableBackChannel: () => Promise<void>;
+      getDatabaseService: () => Promise<DatabaseService>;
       isEnabled: boolean;
-      databaseService: DatabaseService;
     };
     BackChannelIcon: typeof BackChannelIcon;
   }
@@ -413,12 +449,12 @@ if (typeof window !== 'undefined') {
     init: (config?: PluginConfig) => backChannelInstance.init(config),
     getState: () => backChannelInstance.getState(),
     getConfig: () => backChannelInstance.getConfig(),
-    enableBackChannel: () => backChannelInstance.enableBackChannel(),
+    enableBackChannel:
+      backChannelInstance.enableBackChannel.bind(backChannelInstance),
+    getDatabaseService:
+      backChannelInstance.getDatabaseService.bind(backChannelInstance),
     get isEnabled() {
       return backChannelInstance['isEnabled'];
-    },
-    get databaseService() {
-      return backChannelInstance['databaseService'];
     },
   };
 
