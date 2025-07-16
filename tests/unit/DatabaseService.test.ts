@@ -269,10 +269,7 @@ describe('DatabaseService', () => {
         'backchannel-db-id',
         'BackChannelDB_v1'
       );
-      expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        'backchannel-url-root',
-        'file:///test-page.html'
-      );
+      // Note: Document URL root is cached later when metadata is available, not during initialization
     });
 
     it('should detect existing feedback correctly', async () => {

@@ -10,7 +10,10 @@ import { test, expect, Page } from '@playwright/test';
 /**
  * Helper to evaluate database operations in browser context
  */
-async function evaluateInBrowser<T>(page: Page, fn: () => Promise<T>): Promise<T> {
+async function evaluateInBrowser<T>(
+  page: Page,
+  fn: () => Promise<T>
+): Promise<T> {
   return await page.evaluate(fn);
 }
 
@@ -27,15 +30,19 @@ async function clearBrowserStorage(page: Page) {
     } catch (error) {
       console.warn('Failed to clear localStorage:', error);
     }
-    
+
     try {
       // Clear IndexedDB databases
       if (typeof indexedDB !== 'undefined') {
-        const dbNames = ['BackChannelDB', 'BackChannelDB-Demo', 'BackChannelDB-EnabledTest'];
-        
+        const dbNames = [
+          'BackChannelDB',
+          'BackChannelDB-Demo',
+          'BackChannelDB-EnabledTest',
+        ];
+
         for (const dbName of dbNames) {
           try {
-            await new Promise<void>((resolve) => {
+            await new Promise<void>(resolve => {
               const deleteReq = indexedDB.deleteDatabase(dbName);
               deleteReq.onsuccess = () => resolve();
               deleteReq.onerror = () => resolve(); // Continue anyway
@@ -65,7 +72,7 @@ async function setupDemoData(page: Page) {
         documentTitle: 'E2E Test Document',
         documentRootUrl: 'http://localhost:3001/',
         documentId: 'e2e-test-001',
-        reviewer: 'E2E Test User'
+        reviewer: 'E2E Test User',
       },
       comments: [
         {
@@ -75,7 +82,7 @@ async function setupDemoData(page: Page) {
           timestamp: new Date().toISOString(),
           location: '/html/body/h1',
           snippet: 'Database Integration Test',
-          author: 'E2E Test User'
+          author: 'E2E Test User',
         },
         {
           id: 'e2e-comment-002',
@@ -84,9 +91,9 @@ async function setupDemoData(page: Page) {
           timestamp: new Date().toISOString(),
           location: '/html/body/div[1]',
           snippet: 'Test content area',
-          author: 'E2E Test User'
-        }
-      ]
+          author: 'E2E Test User',
+        },
+      ],
     };
 
     window.fakeData = {
@@ -99,16 +106,16 @@ async function setupDemoData(page: Page) {
             {
               name: 'metadata',
               keyPath: 'documentRootUrl',
-              data: [window.demoDatabaseSeed.metadata]
+              data: [window.demoDatabaseSeed.metadata],
             },
             {
               name: 'comments',
               keyPath: 'id',
-              data: window.demoDatabaseSeed.comments
-            }
-          ]
-        }
-      ]
+              data: window.demoDatabaseSeed.comments,
+            },
+          ],
+        },
+      ],
     };
   });
 }
@@ -117,10 +124,10 @@ test.describe('Database Integration Tests', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to a test page first to establish context
     await page.goto('/tests/debug-db.html');
-    
+
     // Clear all storage before each test
     await clearBrowserStorage(page);
-    
+
     // Wait for page to be fully loaded
     await page.waitForLoadState('networkidle');
   });
@@ -128,18 +135,24 @@ test.describe('Database Integration Tests', () => {
   test('should initialize DatabaseService successfully', async ({ page }) => {
     const result = await evaluateInBrowser(page, async () => {
       // Import DatabaseService dynamically
-      const { DatabaseService } = await import('/src/services/DatabaseService.ts');
-      
+      const { DatabaseService } = await import(
+        '/src/services/DatabaseService.ts'
+      );
+
       // Create and initialize database service
-      const dbService = new DatabaseService(undefined, 'BackChannelDB-E2ETest', 1);
+      const dbService = new DatabaseService(
+        undefined,
+        'BackChannelDB-E2ETest',
+        1
+      );
       await dbService.initialize();
-      
+
       // Verify initialization
       const currentUrl = dbService.getCurrentPageUrl();
       return {
         initialized: true,
         currentUrl: currentUrl,
-        hasUrl: currentUrl.length > 0
+        hasUrl: currentUrl.length > 0,
       };
     });
 
@@ -150,41 +163,48 @@ test.describe('Database Integration Tests', () => {
 
   test('should perform full CRUD operations on metadata', async ({ page }) => {
     const result = await evaluateInBrowser(page, async () => {
-      const { DatabaseService } = await import('/src/services/DatabaseService.ts');
-      
-      const dbService = new DatabaseService(undefined, 'BackChannelDB-CRUDTest', 1);
+      const { DatabaseService } = await import(
+        '/src/services/DatabaseService.ts'
+      );
+
+      const dbService = new DatabaseService(
+        undefined,
+        'BackChannelDB-CRUDTest',
+        1
+      );
       await dbService.initialize();
-      
+
       // Test metadata operations
       const testMetadata = {
         documentTitle: 'CRUD Test Document',
         documentRootUrl: 'http://localhost:3001/',
         documentId: 'crud-test-001',
-        reviewer: 'CRUD Test User'
+        reviewer: 'CRUD Test User',
       };
-      
+
       // Create metadata
       await dbService.setMetadata(testMetadata);
-      
+
       // Read metadata
       const retrievedMetadata = await dbService.getMetadata();
-      
+
       // Update metadata
       const updatedMetadata = {
         ...testMetadata,
         documentTitle: 'Updated CRUD Test Document',
-        reviewer: 'Updated Test User'
+        reviewer: 'Updated Test User',
       };
       await dbService.setMetadata(updatedMetadata);
-      
+
       // Read updated metadata
       const finalMetadata = await dbService.getMetadata();
-      
+
       return {
         originalMetadata: retrievedMetadata,
         finalMetadata: finalMetadata,
-        titleMatches: finalMetadata?.documentTitle === 'Updated CRUD Test Document',
-        reviewerMatches: finalMetadata?.reviewer === 'Updated Test User'
+        titleMatches:
+          finalMetadata?.documentTitle === 'Updated CRUD Test Document',
+        reviewerMatches: finalMetadata?.reviewer === 'Updated Test User',
       };
     });
 
@@ -196,11 +216,17 @@ test.describe('Database Integration Tests', () => {
 
   test('should perform full CRUD operations on comments', async ({ page }) => {
     const result = await evaluateInBrowser(page, async () => {
-      const { DatabaseService } = await import('/src/services/DatabaseService.ts');
-      
-      const dbService = new DatabaseService(undefined, 'BackChannelDB-CommentTest', 1);
+      const { DatabaseService } = await import(
+        '/src/services/DatabaseService.ts'
+      );
+
+      const dbService = new DatabaseService(
+        undefined,
+        'BackChannelDB-CommentTest',
+        1
+      );
       await dbService.initialize();
-      
+
       const testComments = [
         {
           id: 'crud-comment-001',
@@ -209,7 +235,7 @@ test.describe('Database Integration Tests', () => {
           timestamp: new Date().toISOString(),
           location: '/html/body/h1',
           snippet: 'Test snippet 1',
-          author: 'Test User'
+          author: 'Test User',
         },
         {
           id: 'crud-comment-002',
@@ -218,39 +244,41 @@ test.describe('Database Integration Tests', () => {
           timestamp: new Date().toISOString(),
           location: '/html/body/div[1]',
           snippet: 'Test snippet 2',
-          author: 'Test User'
-        }
+          author: 'Test User',
+        },
       ];
-      
+
       // Create comments
       await dbService.addComment(testComments[0]);
       await dbService.addComment(testComments[1]);
-      
+
       // Read all comments
       let allComments = await dbService.getComments();
-      
+
       // Update a comment
       await dbService.updateComment('crud-comment-001', {
         text: 'Updated first comment',
-        author: 'Updated Test User'
+        author: 'Updated Test User',
       });
-      
+
       // Read comments after update
       const updatedComments = await dbService.getComments();
-      const updatedComment = updatedComments.find(c => c.id === 'crud-comment-001');
-      
+      const updatedComment = updatedComments.find(
+        c => c.id === 'crud-comment-001'
+      );
+
       // Delete a comment
       await dbService.deleteComment('crud-comment-002');
-      
+
       // Read final comments
       const finalComments = await dbService.getComments();
-      
+
       return {
         initialCount: allComments.length,
         updatedText: updatedComment?.text,
         updatedAuthor: updatedComment?.author,
         finalCount: finalComments.length,
-        remainingCommentId: finalComments[0]?.id
+        remainingCommentId: finalComments[0]?.id,
       };
     });
 
@@ -264,31 +292,35 @@ test.describe('Database Integration Tests', () => {
   test('should seed demo database successfully', async ({ page }) => {
     // Setup demo data
     await setupDemoData(page);
-    
+
     const result = await evaluateInBrowser(page, async () => {
       // Import seeding utilities
-      const { seedDemoDatabaseIfNeeded, getCurrentSeedVersion } = await import('/src/utils/seedDemoDatabase.ts');
-      
+      const { seedDemoDatabaseIfNeeded, getCurrentSeedVersion } = await import(
+        '/src/utils/seedDemoDatabase.ts'
+      );
+
       // Check initial seed version
       const initialVersion = getCurrentSeedVersion();
-      
+
       // Perform seeding
       const seedResult = await seedDemoDatabaseIfNeeded();
-      
+
       // Check final seed version
       const finalVersion = getCurrentSeedVersion();
-      
+
       // Import DatabaseService to verify seeded data
-      const { DatabaseService } = await import('/src/services/DatabaseService.ts');
+      const { DatabaseService } = await import(
+        '/src/services/DatabaseService.ts'
+      );
       const dbService = new DatabaseService(undefined, 'BackChannelDB-Demo', 1);
       await dbService.initialize();
-      
+
       // Verify seeded metadata
       const metadata = await dbService.getMetadata();
-      
+
       // Verify seeded comments
       const comments = await dbService.getComments();
-      
+
       return {
         initialVersion,
         seedResult,
@@ -296,7 +328,7 @@ test.describe('Database Integration Tests', () => {
         metadata: metadata,
         commentCount: comments.length,
         commentIds: comments.map(c => c.id),
-        firstCommentText: comments[0]?.text
+        firstCommentText: comments[0]?.text,
       };
     });
 
@@ -311,35 +343,41 @@ test.describe('Database Integration Tests', () => {
     expect(result.firstCommentText).toBe('First E2E test comment');
   });
 
-  test('should handle enabled/disabled detection correctly', async ({ page }) => {
+  test('should handle enabled/disabled detection correctly', async ({
+    page,
+  }) => {
     // Setup demo data
     await setupDemoData(page);
-    
+
     const result = await evaluateInBrowser(page, async () => {
       // Seed the database first
-      const { seedDemoDatabaseIfNeeded } = await import('/src/utils/seedDemoDatabase.ts');
+      const { seedDemoDatabaseIfNeeded } = await import(
+        '/src/utils/seedDemoDatabase.ts'
+      );
       await seedDemoDatabaseIfNeeded();
-      
+
       // Import DatabaseService
-      const { DatabaseService } = await import('/src/services/DatabaseService.ts');
+      const { DatabaseService } = await import(
+        '/src/services/DatabaseService.ts'
+      );
       const dbService = new DatabaseService(undefined, 'BackChannelDB-Demo', 1);
       await dbService.initialize();
-      
+
       // Test enabled detection (should be true since current URL matches seeded data)
       const isEnabledFirst = await dbService.isBackChannelEnabled();
-      
+
       // Clear cache and test again
       dbService.clearEnabledStateCache();
       const isEnabledAfterClear = await dbService.isBackChannelEnabled();
-      
+
       // Test with different URL context
       const originalHref = window.location.href;
-      
+
       return {
         currentUrl: originalHref,
         isEnabledFirst,
         isEnabledAfterClear,
-        cacheCleared: true
+        cacheCleared: true,
       };
     });
 
@@ -357,7 +395,7 @@ test.describe('Database Integration Tests', () => {
           documentTitle: 'Recreation Test',
           documentRootUrl: 'http://localhost:3001/',
           documentId: 'recreation-001',
-          reviewer: 'Recreation User'
+          reviewer: 'Recreation User',
         },
         comments: [
           {
@@ -366,9 +404,9 @@ test.describe('Database Integration Tests', () => {
             pageUrl: window.location.href,
             timestamp: new Date().toISOString(),
             location: '/html/body',
-            author: 'Recreation User'
-          }
-        ]
+            author: 'Recreation User',
+          },
+        ],
       };
 
       window.fakeData = {
@@ -381,39 +419,43 @@ test.describe('Database Integration Tests', () => {
               {
                 name: 'metadata',
                 keyPath: 'documentRootUrl',
-                data: [window.demoDatabaseSeed.metadata]
+                data: [window.demoDatabaseSeed.metadata],
               },
               {
                 name: 'comments',
                 keyPath: 'id',
-                data: window.demoDatabaseSeed.comments
-              }
-            ]
-          }
-        ]
+                data: window.demoDatabaseSeed.comments,
+              },
+            ],
+          },
+        ],
       };
-      
+
       // Import seeding utilities
-      const { forceReseedDemoDatabase, getCurrentSeedVersion } = await import('/src/utils/seedDemoDatabase.ts');
-      
+      const { forceReseedDemoDatabase, getCurrentSeedVersion } = await import(
+        '/src/utils/seedDemoDatabase.ts'
+      );
+
       // Force reseed (which should delete and recreate)
       const reseedResult = await forceReseedDemoDatabase();
-      
+
       // Verify seeding worked
-      const { DatabaseService } = await import('/src/services/DatabaseService.ts');
+      const { DatabaseService } = await import(
+        '/src/services/DatabaseService.ts'
+      );
       const dbService = new DatabaseService(undefined, 'BackChannelDB-Demo', 1);
       await dbService.initialize();
-      
+
       const metadata = await dbService.getMetadata();
       const comments = await dbService.getComments();
       const seedVersion = getCurrentSeedVersion();
-      
+
       return {
         reseedResult,
         seedVersion,
         metadataTitle: metadata?.documentTitle,
         commentCount: comments.length,
-        commentText: comments[0]?.text
+        commentText: comments[0]?.text,
       };
     });
 
@@ -426,30 +468,42 @@ test.describe('Database Integration Tests', () => {
 
   test('should handle localStorage caching correctly', async ({ page }) => {
     const result = await evaluateInBrowser(page, async () => {
-      const { DatabaseService } = await import('/src/services/DatabaseService.ts');
-      
-      const dbService = new DatabaseService(undefined, 'BackChannelDB-CacheTest', 1);
+      const { DatabaseService } = await import(
+        '/src/services/DatabaseService.ts'
+      );
+
+      const dbService = new DatabaseService(
+        undefined,
+        'BackChannelDB-CacheTest',
+        1
+      );
       await dbService.initialize();
-      
+
       // Check that localStorage was populated during initialization
       const dbId = localStorage.getItem('backchannel-db-id');
       const urlRoot = localStorage.getItem('backchannel-url-root');
-      
+
       // Test enabled state caching
       const isEnabled1 = await dbService.isBackChannelEnabled();
-      
+
       // Check if enabled state was cached
-      const cachedEnabledState = localStorage.getItem('backchannel-enabled-state');
+      const cachedEnabledState = localStorage.getItem(
+        'backchannel-enabled-state'
+      );
       const cachedUrlCheck = localStorage.getItem('backchannel-last-url-check');
-      
+
       // Test cache hit by calling again
       const isEnabled2 = await dbService.isBackChannelEnabled();
-      
+
       // Clear cache and test
       dbService.clearEnabledStateCache();
-      const clearedEnabledState = localStorage.getItem('backchannel-enabled-state');
-      const clearedUrlCheck = localStorage.getItem('backchannel-last-url-check');
-      
+      const clearedEnabledState = localStorage.getItem(
+        'backchannel-enabled-state'
+      );
+      const clearedUrlCheck = localStorage.getItem(
+        'backchannel-last-url-check'
+      );
+
       return {
         dbId,
         urlRoot,
@@ -458,12 +512,13 @@ test.describe('Database Integration Tests', () => {
         cachedEnabledState,
         cachedUrlCheck: !!cachedUrlCheck,
         clearedEnabledState,
-        clearedUrlCheck
+        clearedUrlCheck,
       };
     });
 
     expect(result.dbId).toBe('BackChannelDB-CacheTest_v1');
-    expect(result.urlRoot).toContain('localhost');
+    // urlRoot should be null since this database has no metadata
+    expect(result.urlRoot).toBeNull();
     expect(result.isEnabled1).toBe(result.isEnabled2); // Should be consistent
     expect(result.cachedEnabledState).toBeTruthy();
     expect(result.cachedUrlCheck).toBe(true);

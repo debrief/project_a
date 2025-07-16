@@ -122,8 +122,6 @@ export interface StorageInterface {
   updateComment(id: string, updates: Partial<CaptureComment>): Promise<void>;
   /** Delete a comment */
   deleteComment(id: string): Promise<void>;
-  /** Clear all data */
-  clear(): Promise<void>;
 }
 
 /**

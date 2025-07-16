@@ -94,6 +94,30 @@ class BackChannelPlugin implements IBackChannelPlugin {
     return 'backchannel-feedback';
   }
 
+  /**
+   * Clear BackChannel-related localStorage entries
+   * Called when no feedback package exists for the current page
+   */
+  private clearBackChannelLocalStorage(): void {
+    try {
+      const keysToRemove = [
+        'backchannel-db-id',
+        'backchannel-url-root',
+        'backchannel-enabled-state',
+        'backchannel-last-url-check',
+        'backchannel-seed-version',
+      ];
+
+      for (const key of keysToRemove) {
+        localStorage.removeItem(key);
+      }
+
+      console.log('Cleared BackChannel localStorage entries');
+    } catch (error) {
+      console.warn('Failed to clear BackChannel localStorage:', error);
+    }
+  }
+
   async init(config: PluginConfig = {}): Promise<void> {
     this.config = {
       ...this.getDefaultConfig(),
@@ -133,14 +157,29 @@ class BackChannelPlugin implements IBackChannelPlugin {
   private async onDOMReady(): Promise<void> {
     console.log('BackChannel DOM ready');
 
-    // Check if BackChannel should be enabled for this page
+    // Check if BackChannel should be enabled for this page using static method
+    // This doesn't create a database connection unless there's an existing feedback package
     try {
-      const db = await this.getDatabaseService();
-      this.isEnabled = await db.isBackChannelEnabled();
-      console.log('BackChannel enabled for this page:', this.isEnabled);
+      const hasExistingPackage =
+        await DatabaseService.hasExistingFeedbackPackage();
+
+      if (hasExistingPackage) {
+        // Only create database service if there's an existing package
+        const db = await this.getDatabaseService();
+        this.isEnabled = await db.isBackChannelEnabled();
+        console.log('BackChannel enabled for this page:', this.isEnabled);
+      } else {
+        // No existing package, remain disabled and clear any localStorage
+        this.isEnabled = false;
+        this.clearBackChannelLocalStorage();
+        console.log(
+          'BackChannel disabled - no existing feedback package found'
+        );
+      }
     } catch (error) {
       console.error('Failed to check if BackChannel should be enabled:', error);
       // Keep isEnabled as false on error
+      this.isEnabled = false;
     }
 
     // Initialize UI components after DOM is ready

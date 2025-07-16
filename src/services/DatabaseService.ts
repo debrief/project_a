@@ -9,6 +9,7 @@ import {
   DocumentMetadata,
   StorageInterface,
   isCaptureComment,
+  FakeDbStore,
 } from '../types';
 
 /**
@@ -50,6 +51,224 @@ export class DatabaseService implements StorageInterface {
     this.fakeIndexedDb = fakeIndexedDb;
     this.dbName = dbName || DEFAULT_DB_NAME;
     this.dbVersion = dbVersion || DEFAULT_DB_VERSION;
+  }
+
+  /**
+   * Static method to check if there's an existing IndexedDB feedback package for the current URL
+   * This method does not create a database connection - it only checks for existing data
+   * @returns Promise<boolean> - true if a matching feedback package exists, false otherwise
+   */
+  static async hasExistingFeedbackPackage(): Promise<boolean> {
+    const currentUrl = DatabaseService.getCurrentPageUrl();
+
+    // Check if there's a seed database in the window object AND if current URL matches
+    if (typeof window !== 'undefined') {
+      const fakeData = (window as unknown as { fakeData?: FakeDbStore })
+        .fakeData;
+      if (fakeData && fakeData.databases && fakeData.databases.length > 0) {
+        console.log('Found seed database in window object');
+
+        // Check if any of the seed data matches the current URL
+        for (const db of fakeData.databases) {
+          if (db.objectStores) {
+            for (const store of db.objectStores) {
+              if (store.name === 'metadata' && store.data) {
+                for (const metadata of store.data) {
+                  if (
+                    metadata.documentRootUrl &&
+                    DatabaseService.urlPathMatches(
+                      currentUrl,
+                      metadata.documentRootUrl
+                    )
+                  ) {
+                    console.log('Found matching seed data for current URL');
+                    return true;
+                  }
+                }
+              }
+            }
+          }
+        }
+        console.log('Seed data exists but no URL match found');
+      }
+    }
+
+    // Check existing databases using indexedDB.databases() to avoid creating empty databases
+    if (typeof indexedDB.databases === 'function') {
+      try {
+        const existingDbs = await indexedDB.databases();
+        const targetDbNames = [
+          DEFAULT_DB_NAME,
+          'BackChannelDB-Demo',
+          'BackChannelDB-EnabledTest',
+        ];
+
+        for (const dbInfo of existingDbs) {
+          if (targetDbNames.includes(dbInfo.name)) {
+            try {
+              const hasMatchingPackage =
+                await DatabaseService.checkDatabaseForUrlMatch(
+                  dbInfo.name,
+                  currentUrl
+                );
+              if (hasMatchingPackage) {
+                console.log(
+                  `Found matching feedback package in database: ${dbInfo.name}`
+                );
+                return true;
+              }
+            } catch (error) {
+              console.warn(`Failed to check database ${dbInfo.name}:`, error);
+              // Continue checking other databases
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to get existing databases:', error);
+      }
+    } else {
+      // Fallback for browsers that don't support indexedDB.databases()
+      console.log(
+        'indexedDB.databases() not available, skipping database check'
+      );
+    }
+
+    console.log('No existing feedback package found for current URL');
+    return false;
+  }
+
+  /**
+   * Static helper method to get current page URL
+   */
+  private static getCurrentPageUrl(): string {
+    if (typeof window !== 'undefined' && window.location) {
+      return window.location.href;
+    }
+    return '';
+  }
+
+  /**
+   * Static helper method to check a specific database for URL matches
+   * Uses indexedDB.databases() when available to avoid creating databases
+   */
+  private static async checkDatabaseForUrlMatch(
+    dbName: string,
+    currentUrl: string
+  ): Promise<boolean> {
+    try {
+      // Use indexedDB.databases() if available to check if database exists without creating it
+      if (typeof indexedDB.databases === 'function') {
+        const existingDbs = await indexedDB.databases();
+        const dbExists = existingDbs.some(db => db.name === dbName);
+
+        if (!dbExists) {
+          return false;
+        }
+      }
+
+      // If we can't check without opening, or if database exists, proceed with opening
+      return new Promise(resolve => {
+        const request = indexedDB.open(dbName);
+
+        request.onerror = () => {
+          // Database doesn't exist or can't be opened
+          resolve(false);
+        };
+
+        request.onsuccess = () => {
+          const db = request.result;
+
+          try {
+            // Check if metadata store exists
+            if (!db.objectStoreNames.contains(METADATA_STORE)) {
+              db.close();
+              resolve(false);
+              return;
+            }
+
+            const transaction = db.transaction([METADATA_STORE], 'readonly');
+            const store = transaction.objectStore(METADATA_STORE);
+            const getAllRequest = store.getAll();
+
+            getAllRequest.onsuccess = () => {
+              const allMetadata = getAllRequest.result || [];
+
+              // Check if any metadata entry has a URL root that matches the current URL
+              for (const metadata of allMetadata) {
+                if (
+                  DatabaseService.urlPathMatches(
+                    currentUrl,
+                    metadata.documentRootUrl
+                  )
+                ) {
+                  db.close();
+                  resolve(true);
+                  return;
+                }
+              }
+
+              db.close();
+              resolve(false);
+            };
+
+            getAllRequest.onerror = () => {
+              db.close();
+              resolve(false);
+            };
+          } catch {
+            db.close();
+            resolve(false);
+          }
+        };
+
+        // Add timeout to prevent hanging
+        setTimeout(() => resolve(false), 5000);
+      });
+    } catch (error) {
+      console.warn(`Error checking database ${dbName}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Static helper method for URL path matching
+   */
+  private static urlPathMatches(
+    currentUrl: string,
+    documentRootUrl: string
+  ): boolean {
+    try {
+      // Handle special case for file:// protocol patterns
+      if (documentRootUrl === 'file://' || documentRootUrl === 'file:///') {
+        return currentUrl.startsWith('file://');
+      }
+
+      // Handle cases where documentRootUrl might be a simple path
+      let patternPath: string;
+      if (
+        documentRootUrl.startsWith('http://') ||
+        documentRootUrl.startsWith('https://') ||
+        documentRootUrl.startsWith('file://')
+      ) {
+        // Full URL - extract just the path
+        const patternUrl = new URL(documentRootUrl);
+        patternPath = patternUrl.pathname;
+      } else {
+        // Assume it's already a path
+        patternPath = documentRootUrl;
+      }
+
+      // Get current URL path
+      const currentUrlObj = new URL(currentUrl);
+      const currentPath = currentUrlObj.pathname;
+
+      // Check if current path starts with the pattern path
+      return currentPath.startsWith(patternPath);
+    } catch (error) {
+      console.warn('URL parsing error in static urlPathMatches:', error);
+      // Fallback to simple string containment
+      return currentUrl.includes(documentRootUrl);
+    }
   }
 
   /**
@@ -133,14 +352,23 @@ export class DatabaseService implements StorageInterface {
   private cacheBasicInfo(): void {
     try {
       const dbId = `${this.dbName}_v${this.dbVersion}`;
-      const urlRoot = this.getDocumentUrlRoot();
-
       localStorage.setItem(CACHE_KEYS.DATABASE_ID, dbId);
-      localStorage.setItem(CACHE_KEYS.DOCUMENT_URL_ROOT, urlRoot);
-
       console.log('Basic info cached to localStorage');
     } catch (error) {
       console.warn('Failed to cache basic info to localStorage:', error);
+    }
+  }
+
+  /**
+   * Caches the document root URL from metadata to localStorage
+   * Should only be called when metadata is available
+   */
+  private cacheDocumentUrlRoot(documentRootUrl: string): void {
+    try {
+      localStorage.setItem(CACHE_KEYS.DOCUMENT_URL_ROOT, documentRootUrl);
+      console.log('Document root URL cached to localStorage:', documentRootUrl);
+    } catch (error) {
+      console.warn('Failed to cache document root URL to localStorage:', error);
     }
   }
 
@@ -398,6 +626,8 @@ export class DatabaseService implements StorageInterface {
       for (const metadata of allMetadata) {
         if (this.urlPathMatches(currentUrl, metadata.documentRootUrl)) {
           console.log('Found matching URL pattern:', metadata.documentRootUrl);
+          // Cache the document root URL from the matching metadata
+          this.cacheDocumentUrlRoot(metadata.documentRootUrl);
           return true;
         }
       }
