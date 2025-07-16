@@ -111,7 +111,7 @@ The plugin exports feedback in a structured CSV format with:
 ### Database Creation Policy
 - **Requirement**: IndexedDB databases and localStorage data should not be created until there is an active feedback package session
 - This prevents unnecessary storage operations on pages without feedback functionality
-- Database initialization should only occur when a feedback package is created or when existing package data is detected
+- Database creation should only occur when a feedback package is created or when existing a seed database is detected
 
 ## Development Workflow
 
