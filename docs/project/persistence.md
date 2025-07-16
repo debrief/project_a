@@ -51,6 +51,19 @@ The schema explicitly supports extending `CaptureComment` into `ReviewComment` v
 - Each database includes a `comments` store (array of feedback comments) and a `metadata` entry (document title and root path).
 - Data is persisted as soon as a comment is added or saved.
 
+### Database Initialization Policy
+
+**Requirement**: The plugin should not create IndexedDB databases or cache localStorage data until there is an active feedback package session.
+
+- This policy prevents unnecessary database creation on pages where feedback is not being captured
+- Database initialization only occurs when:
+  - A feedback package is created by a reviewer
+  - A testing seed database (in JSON format) has been declared in the `window` object.
+- localStorage data entries are only created when:
+  - A feedback package matching the current URL has been identified
+- if the user navigates to a BackChannel page, and no feedback package has been created, the plugin will clear the BackChannel-related localStorage data entries    
+- This ensures minimal storage footprint on pages without feedback functionality
+
 ## 4. Comment Lifecycle
 
 | Phase           | Trigger                      | Action                                           |

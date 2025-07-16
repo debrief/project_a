@@ -108,6 +108,11 @@ The plugin exports feedback in a structured CSV format with:
 - **Namespacing**: Storage keys based on document/manual configuration
 - **CRUD Operations**: Full create, read, update, delete operations for comments and feedback packages
 
+### Database Creation Policy
+- **Requirement**: IndexedDB databases and localStorage data should not be created until there is an active feedback package session
+- This prevents unnecessary storage operations on pages without feedback functionality
+- Database initialization should only occur when a feedback package is created or when existing package data is detected
+
 ## Development Workflow
 
 - Git commits should be made after completion of each task in the Implementation Plan
