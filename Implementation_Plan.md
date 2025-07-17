@@ -89,10 +89,10 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
 - **Assigned to**: UI Developer
 - **Action Steps**:
   1. Create sidebar UI with toggle functionality
-  2. Implement "Capture Feedback" and "Export" buttons
-  3. On "Capture Feedback", sidebar hidden, allowing reviewer to select element of content. Once clicked, sidebar returns.  A `Cancel selection` button is shown to top-right.
-  3. Add comment list display in sidebar
-  4. Implement sidebar state persistence
+  2. Implement "Capture Feedback" and "Export" buttons in toolbar at top of panel.
+  3. On "Capture Feedback", sidebar hidden, allowing reviewer to select element of content. Once clicked, write element details to console, and sidebar returns.  A `Cancel selection` button is shown to top-right.
+  3. Add list of comments in sidebar
+  4. Implement sidebar state persistence (visibility)
   5. Update e2e tests to verify sidebar functionality, and that seeded database comments are displayed
   - **Guiding Notes**: Sidebar should be collapsible, use CSS transitions for smooth animations, persist state in localStorage
 
