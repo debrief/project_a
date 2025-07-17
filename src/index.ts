@@ -8,11 +8,13 @@ import {
 import { DatabaseService } from './services/DatabaseService';
 import { seedDemoDatabaseIfNeeded } from './utils/seedDemoDatabase';
 import { BackChannelIcon } from './components/BackChannelIcon';
+import { BackChannelSidebar } from './components/BackChannelSidebar';
 
 // Force the custom element to be registered
 if (typeof window !== 'undefined') {
   // Simply referencing the class ensures it's not tree-shaken
   window.BackChannelIcon = BackChannelIcon;
+  window.BackChannelSidebar = BackChannelSidebar;
 }
 
 class BackChannelPlugin implements IBackChannelPlugin {
@@ -20,6 +22,7 @@ class BackChannelPlugin implements IBackChannelPlugin {
   private state: FeedbackState;
   private databaseService: DatabaseService | null = null;
   private icon: BackChannelIcon | null = null;
+  private sidebar: BackChannelSidebar | null = null;
   private isEnabled: boolean = false;
 
   constructor() {
@@ -188,6 +191,11 @@ class BackChannelPlugin implements IBackChannelPlugin {
         // Add to DOM
         document.body.appendChild(this.icon);
 
+        // Initialize sidebar if enabled
+        if (this.isEnabled) {
+          await this.initializeSidebar();
+        }
+
         // Inject styles for the icon and other components
         this.injectStyles();
 
@@ -204,6 +212,54 @@ class BackChannelPlugin implements IBackChannelPlugin {
     } catch (error) {
       console.error('Failed to initialize Lit component:', error);
       this.initializeFallbackIcon();
+    }
+  }
+
+  private async initializeSidebar(): Promise<void> {
+    try {
+      // Create sidebar element
+      const sidebarElement = document.createElement('backchannel-sidebar');
+
+      // Check if it's a proper custom element
+      if (
+        (sidebarElement as unknown as { connectedCallback: () => void })
+          .connectedCallback
+      ) {
+        // Cast to the proper type
+        this.sidebar = sidebarElement as BackChannelSidebar;
+
+        // Set properties
+        this.sidebar.backChannelPlugin = this;
+
+        // Let the sidebar component handle its own visibility state restoration
+        // This ensures the 'visible' attribute is properly set on the DOM element
+
+        // Add event listeners for sidebar events
+        this.sidebar.addEventListener('sidebar-closed', () => {
+          this.handleSidebarClosed();
+        });
+
+        this.sidebar.addEventListener('start-capture', () => {
+          this.handleStartCapture();
+        });
+
+        this.sidebar.addEventListener('export-comments', () => {
+          this.handleExportComments();
+        });
+
+        // Add to DOM
+        document.body.appendChild(this.sidebar);
+
+        // Update icon visibility based on sidebar state
+        this.updateIconVisibility();
+
+        // Wait for the component to be ready
+        await this.sidebar.updateComplete;
+      } else {
+        throw new Error('Sidebar Lit component not properly registered');
+      }
+    } catch (error) {
+      console.error('Failed to initialize sidebar:', error);
     }
   }
 
@@ -340,17 +396,53 @@ class BackChannelPlugin implements IBackChannelPlugin {
       return;
     }
 
-    // If enabled, handle normal state transitions
-    switch (this.state) {
-      case FeedbackState.INACTIVE:
-        this.checkMetadataOrCreatePackage();
-        break;
-      case FeedbackState.CAPTURE:
-        this.setState(FeedbackState.REVIEW);
-        break;
-      case FeedbackState.REVIEW:
-        this.setState(FeedbackState.INACTIVE);
-        break;
+    // If enabled, show sidebar (transition from Active to Capture mode)
+    if (this.sidebar) {
+      this.sidebar.show();
+      this.updateIconVisibility();
+    } else {
+      console.warn('Sidebar not available');
+    }
+  }
+
+  private handleSidebarClosed(): void {
+    // Update icon visibility when sidebar is closed (transition from Capture to Active mode)
+    this.updateIconVisibility();
+  }
+
+  private handleStartCapture(): void {
+    // Hide sidebar temporarily for element selection
+    if (this.sidebar) {
+      this.sidebar.hide();
+    }
+
+    // TODO: Implement element selection logic
+    console.log('Starting element selection...');
+
+    // For now, just show sidebar again after a short delay
+    setTimeout(() => {
+      if (this.sidebar) {
+        this.sidebar.show();
+      }
+    }, 2000);
+  }
+
+  private handleExportComments(): void {
+    // TODO: Implement CSV export logic
+    console.log('Exporting comments to CSV...');
+  }
+
+  private updateIconVisibility(): void {
+    if (!this.icon) return;
+
+    // Hide icon when sidebar is visible (Capture mode)
+    // Show icon when sidebar is hidden (Active mode)
+    const sidebarVisible = this.sidebar?.visible || false;
+
+    if (sidebarVisible) {
+      this.icon.style.display = 'none';
+    } else {
+      this.icon.style.display = 'flex';
     }
   }
 
@@ -412,6 +504,11 @@ class BackChannelPlugin implements IBackChannelPlugin {
       const db = await this.getDatabaseService();
       db.clearEnabledStateCache();
 
+      // Initialize sidebar if not already created
+      if (!this.sidebar) {
+        await this.initializeSidebar();
+      }
+
       // Update icon enabled state and set state to capture
       this.setState(FeedbackState.CAPTURE);
       if (this.icon) {
@@ -421,6 +518,12 @@ class BackChannelPlugin implements IBackChannelPlugin {
           // Fallback: set attribute directly
           this.icon.setAttribute('enabled', 'true');
         }
+      }
+
+      // Show sidebar after package creation
+      if (this.sidebar) {
+        this.sidebar.show();
+        this.updateIconVisibility();
       }
     } catch (error) {
       console.error('Error enabling BackChannel:', error);
