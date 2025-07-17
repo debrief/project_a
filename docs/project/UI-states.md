@@ -124,7 +124,7 @@ Page Load:
 ### State Transitions:
 - **Grey → Blue**: Package creation completed
 - **Blue → hidden**: User clicks icon to show sidebar
-- **hidden → Blue**: User clicks icon to hide sidebar and deactivate
+- **hidden → Blue**: User hides sidebar
 
 ### Key Features:
 - State automatically determined on page load
