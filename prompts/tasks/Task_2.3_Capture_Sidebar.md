@@ -26,10 +26,11 @@
 2. **Implement sidebar state persistence and initialization behavior**
    - Use localStorage key `backchannel-sidebar-visible` to track sidebar visibility state
    - Save state when user manually opens/closes the sidebar
-   - **CRITICAL INITIALIZATION BEHAVIOR**: When a page loads with an existing feedback package:
-     * BackChannel should automatically initialize in **capture mode** (blue icon state)
-     * The sidebar should be shown **only if** `backchannel-sidebar-visible` is `true` in localStorage
-     * This ensures users can immediately start capturing feedback when a package exists
+   - **CRITICAL INITIALIZATION BEHAVIOR**: When a page loads:
+     * **If NO feedback package exists for this URL**: BackChannel should be in **inactive mode** (grey icon state)
+     * **If feedback package exists for this URL AND `backchannel-sidebar-visible` is `false`**: BackChannel should be in **capture mode** (blue icon state) - one click opens sidebar
+     * **If feedback package exists for this URL AND `backchannel-sidebar-visible` is `true`**: BackChannel should be in **review mode** (green icon state) with sidebar automatically visible
+     * This creates a seamless workflow: grey (no package) → blue (package exists, sidebar closed) → green (package exists, sidebar open)
    - Restore sidebar visibility when navigating to any page within the same feedback package (same document root URL)
    - Restoration should occur after UI components are fully loaded and sidebar element exists in DOM
    - If localStorage shows sidebar was visible, restore to visible and automatically load/show comments for the current page
@@ -90,8 +91,10 @@
 - Toolbar with "Capture Feedback" and "Export" buttons is functional
 - Capture mode properly hides sidebar and shows cancel button
 - Comment list displays seeded database comments for current page
-- **CRITICAL**: BackChannel initializes in capture mode (blue) when feedback package exists, not inactive mode (grey)
-- Sidebar shows only if `backchannel-sidebar-visible` is `true` in localStorage during initialization
+- **CRITICAL**: Correct initialization states based on feedback package and localStorage:
+  * Grey (inactive) when no feedback package exists
+  * Blue (capture) when feedback package exists but sidebar localStorage is false
+  * Green (review) when feedback package exists and sidebar localStorage is true, with sidebar automatically visible
 - Sidebar state persists and automatically restores when navigating within the same feedback package
 - Restoration is seamless with no visual indication to the user
 - Comments for current page are automatically loaded during restoration
