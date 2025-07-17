@@ -791,6 +791,47 @@ class BackChannelPlugin implements IBackChannelPlugin {
       'SMALL',
     ];
 
+    // Elements that should be selectable at their own level (don't traverse up)
+    const selectableElements = [
+      'LI',
+      'TR',
+      'TD',
+      'TH',
+      'BUTTON',
+      'INPUT',
+      'SELECT',
+      'TEXTAREA',
+      'OPTION',
+      'H1',
+      'H2',
+      'H3',
+      'H4',
+      'H5',
+      'H6',
+      'P',
+      'BLOCKQUOTE',
+      'PRE',
+      'ARTICLE',
+      'SECTION',
+      'ASIDE',
+      'HEADER',
+      'FOOTER',
+      'NAV',
+      'MAIN',
+      'FIGURE',
+      'FIGCAPTION',
+    ];
+
+    // If the target is already a selectable element, use it directly
+    if (
+      selectableElements.includes(target.tagName) &&
+      target.textContent?.trim().length > 0 &&
+      target.offsetWidth > 10 &&
+      target.offsetHeight > 10
+    ) {
+      return target;
+    }
+
     // Walk up the DOM to find a good element to highlight
     while (current && current !== document.body) {
       // Skip if this element should be ignored
@@ -804,7 +845,16 @@ class BackChannelPlugin implements IBackChannelPlugin {
       const hasSize = current.offsetWidth > 20 && current.offsetHeight > 20;
       const isBlockElement = !inlineElements.includes(current.tagName);
 
-      // If it's a good candidate, use it
+      // If it's a selectable element, use it (don't traverse further up)
+      if (
+        selectableElements.includes(current.tagName) &&
+        hasContent &&
+        hasSize
+      ) {
+        return current;
+      }
+
+      // If it's a good candidate and either block element or the original target, use it
       if (hasContent && hasSize && (isBlockElement || current === target)) {
         return current;
       }
