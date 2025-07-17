@@ -7,8 +7,8 @@ This document outlines the required behaviors for the BackChannel (BC) icon and 
 | State | Description | Appearance | Action on Click |
 |-------|-------------|------------|-----------------|
 | Inactive | No feedback package matches current page | Grey icon | Show onboarding guidance and prompt to create package |
-| Capture | Feedback package exists, sidebar hidden | Blue icon | Switch to Review mode and show sidebar |
-| Review | Feedback package exists, sidebar visible | Green icon | Switch to Inactive mode and hide sidebar |
+| Active | Feedback package exists, sidebar hidden | Blue icon | Switch to Capture mode and show sidebar |
+| Capture | Feedback package exists, sidebar visible, BC icon hidden. Icon revealed (blue) on sidebar close | Icon hidden | n/a |
 
 ## 2. Initialization Behavior
 
@@ -23,12 +23,12 @@ When a page loads, BackChannel automatically determines the initial state based 
 2. **Feedback package exists + `backchannel-sidebar-visible` localStorage is `false`**:
    - Icon: Blue (Active mode)
    - Sidebar: Created but hidden
-   - Action: Click switches to Review mode and shows sidebar
+   - Action: Click shows sidebar
 
 3. **Feedback package exists + `backchannel-sidebar-visible` localStorage is `true`**:
-   - Icon: Green (Capture mode)
+   - Icon: hidden (Capture mode)
    - Sidebar: Created and automatically visible
-   - Action: Click switches to Inactive mode and hides sidebar
+   - Action: Click `Close` on sidebar switches to Active (blue) mode and hides sidebar
 
 ### Sidebar State Persistence
 - Sidebar visibility state is persisted in localStorage using key `backchannel-sidebar-visible`
@@ -50,12 +50,13 @@ When a page loads, BackChannel automatically determines the initial state based 
 
 ## 4. Feedback Capture Interaction
 
-When sidebar is visible (Review mode - green icon), users can capture feedback:
+When sidebar is visible, users can capture feedback:
 
 - Sidebar contains:
   - List of existing comments for current page
   - "Capture Feedback" button in toolbar
   - "Export" button in toolbar
+  - "X" to close, at top-right
 - Click "Capture Feedback" button:
   - Sidebar is temporarily hidden to allow element selection
   - "Cancel selection" button appears in viewport
