@@ -28,8 +28,8 @@
    - Save state when user manually opens/closes the sidebar
    - **CRITICAL INITIALIZATION BEHAVIOR**: When a page loads:
      * **If NO feedback package exists for this URL**: BackChannel should be in **inactive mode** (grey icon state)
-     * **If feedback package exists for this URL AND `backchannel-sidebar-visible` is `false`**: BackChannel should be in **capture mode** (blue icon state) - one click opens sidebar
-     * **If feedback package exists for this URL AND `backchannel-sidebar-visible` is `true`**: BackChannel should be in **review mode** (green icon state) with sidebar automatically visible
+     * **If feedback package exists for this URL AND `backchannel-sidebar-visible` is `false`**: BackChannel should be in **active mode** (blue icon state) - one click opens sidebar
+     * **If feedback package exists for this URL AND `backchannel-sidebar-visible` is `true`**: BackChannel should be in **capture mode** (green icon state) with sidebar automatically visible
      * This creates a seamless workflow: grey (no package) → blue (package exists, sidebar closed) → green (package exists, sidebar open)
    - Restore sidebar visibility when navigating to any page within the same feedback package (same document root URL)
    - Restoration should occur after UI components are fully loaded and sidebar element exists in DOM
