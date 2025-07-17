@@ -66,8 +66,6 @@ export class DatabaseService implements StorageInterface {
       const fakeData = (window as unknown as { fakeData?: FakeDbStore })
         .fakeData;
       if (fakeData && fakeData.databases && fakeData.databases.length > 0) {
-        console.log('Found seed database in window object');
-
         // Check if any of the seed data matches the current URL
         for (const db of fakeData.databases) {
           if (db.objectStores) {
@@ -81,7 +79,6 @@ export class DatabaseService implements StorageInterface {
                       metadata.documentRootUrl
                     )
                   ) {
-                    console.log('Found matching seed data for current URL');
                     return true;
                   }
                 }
@@ -89,7 +86,6 @@ export class DatabaseService implements StorageInterface {
             }
           }
         }
-        console.log('Seed data exists but no URL match found');
       }
     }
 
@@ -112,9 +108,6 @@ export class DatabaseService implements StorageInterface {
                   currentUrl
                 );
               if (hasMatchingPackage) {
-                console.log(
-                  `Found matching feedback package in database: ${dbInfo.name}`
-                );
                 return true;
               }
             } catch (error) {
@@ -128,12 +121,8 @@ export class DatabaseService implements StorageInterface {
       }
     } else {
       // Fallback for browsers that don't support indexedDB.databases()
-      console.log(
-        'indexedDB.databases() not available, skipping database check'
-      );
     }
 
-    console.log('No existing feedback package found for current URL');
     return false;
   }
 
@@ -284,7 +273,6 @@ export class DatabaseService implements StorageInterface {
       this.db = await this.openDatabase();
       this.isInitialized = true;
       this.cacheBasicInfo();
-      console.log('DatabaseService initialized successfully');
     } catch (error) {
       console.error('Failed to initialize DatabaseService:', error);
       throw error;
@@ -311,12 +299,10 @@ export class DatabaseService implements StorageInterface {
       };
 
       request.onsuccess = () => {
-        console.log('Database opened successfully');
         resolve(request.result);
       };
 
       request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
-        console.log('Database upgrade needed');
         const db = (event.target as IDBOpenDBRequest).result;
         this.setupDatabase(db);
       };
@@ -327,14 +313,11 @@ export class DatabaseService implements StorageInterface {
    * Sets up database schema with object stores
    */
   private setupDatabase(db: IDBDatabase): void {
-    console.log('Setting up database schema');
-
     // Create metadata store
     if (!db.objectStoreNames.contains(METADATA_STORE)) {
       db.createObjectStore(METADATA_STORE, {
         keyPath: 'documentRootUrl',
       });
-      console.log('Created metadata object store');
     }
 
     // Create comments store
@@ -342,7 +325,6 @@ export class DatabaseService implements StorageInterface {
       db.createObjectStore(COMMENTS_STORE, {
         keyPath: 'id',
       });
-      console.log('Created comments object store');
     }
   }
 
@@ -353,7 +335,6 @@ export class DatabaseService implements StorageInterface {
     try {
       const dbId = `${this.dbName}_v${this.dbVersion}`;
       localStorage.setItem(CACHE_KEYS.DATABASE_ID, dbId);
-      console.log('Basic info cached to localStorage');
     } catch (error) {
       console.warn('Failed to cache basic info to localStorage:', error);
     }
@@ -366,7 +347,6 @@ export class DatabaseService implements StorageInterface {
   private cacheDocumentUrlRoot(documentRootUrl: string): void {
     try {
       localStorage.setItem(CACHE_KEYS.DOCUMENT_URL_ROOT, documentRootUrl);
-      console.log('Document root URL cached to localStorage:', documentRootUrl);
     } catch (error) {
       console.warn('Failed to cache document root URL to localStorage:', error);
     }
@@ -407,8 +387,6 @@ export class DatabaseService implements StorageInterface {
       throw new Error('Database not initialized');
     }
 
-    console.log('DatabaseService: Setting metadata in database:', metadata);
-
     return this.executeTransaction(
       [METADATA_STORE],
       'readwrite',
@@ -417,7 +395,6 @@ export class DatabaseService implements StorageInterface {
         return new Promise<void>((resolve, reject) => {
           const request = store.put(metadata);
           request.onsuccess = () => {
-            console.log('DatabaseService: Metadata put operation succeeded');
             resolve();
           };
           request.onerror = () => {
@@ -467,8 +444,6 @@ export class DatabaseService implements StorageInterface {
       throw new Error('Database not initialized');
     }
 
-    console.log('DatabaseService: Adding comment to database:', comment);
-
     return this.executeTransaction(
       [COMMENTS_STORE],
       'readwrite',
@@ -477,10 +452,6 @@ export class DatabaseService implements StorageInterface {
         return new Promise<void>((resolve, reject) => {
           const request = store.add(comment);
           request.onsuccess = () => {
-            console.log(
-              'DatabaseService: Comment add operation succeeded for:',
-              comment.id
-            );
             resolve();
           };
           request.onerror = () => {
@@ -572,10 +543,6 @@ export class DatabaseService implements StorageInterface {
       const lastUrlCheck = localStorage.getItem(CACHE_KEYS.LAST_URL_CHECK);
 
       if (cachedEnabledState !== null && lastUrlCheck === currentUrl) {
-        console.log(
-          'Using cached enabled state:',
-          cachedEnabledState === 'true'
-        );
         return cachedEnabledState === 'true';
       }
     } catch (error) {
@@ -625,14 +592,12 @@ export class DatabaseService implements StorageInterface {
       // Check if any metadata entry has a URL root that matches the current URL
       for (const metadata of allMetadata) {
         if (this.urlPathMatches(currentUrl, metadata.documentRootUrl)) {
-          console.log('Found matching URL pattern:', metadata.documentRootUrl);
           // Cache the document root URL from the matching metadata
           this.cacheDocumentUrlRoot(metadata.documentRootUrl);
           return true;
         }
       }
 
-      console.log('No matching URL root found in database');
       return false;
     } catch (error) {
       console.error('Error scanning database for URL match:', error);
@@ -648,7 +613,6 @@ export class DatabaseService implements StorageInterface {
     try {
       localStorage.removeItem(CACHE_KEYS.ENABLED_STATE);
       localStorage.removeItem(CACHE_KEYS.LAST_URL_CHECK);
-      console.log('Enabled state cache cleared');
     } catch (error) {
       console.warn('Failed to clear enabled state cache:', error);
     }
@@ -677,9 +641,6 @@ export class DatabaseService implements StorageInterface {
       // Handle special case for file:// protocol patterns
       if (documentRootUrl === 'file://' || documentRootUrl === 'file:///') {
         const matches = currentUrl.startsWith('file://');
-        console.log(
-          `File protocol matching: "${currentUrl}" starts with "file://" = ${matches}`
-        );
         return matches;
       }
 
@@ -708,17 +669,11 @@ export class DatabaseService implements StorageInterface {
       // Check if current path contains the pattern path
       const matches = currentPath.includes(patternPath);
 
-      console.log(
-        `URL path matching: "${currentPath}" contains "${patternPath}" = ${matches}`
-      );
       return matches;
     } catch (error) {
       console.warn('URL parsing error in urlPathMatches:', error);
       // Fallback to simple string containment
       const matches = currentUrl.includes(documentRootUrl);
-      console.log(
-        `Fallback string matching: "${currentUrl}" contains "${documentRootUrl}" = ${matches}`
-      );
       return matches;
     }
   }
@@ -741,7 +696,6 @@ export class DatabaseService implements StorageInterface {
    */
   close(): void {
     if (this.db) {
-      console.log('Closing database connection');
       this.db.close();
       this.db = null;
       this.isInitialized = false;
@@ -778,12 +732,7 @@ export class DatabaseService implements StorageInterface {
 
       const transaction = this.db.transaction(storeNames, mode);
 
-      transaction.oncomplete = () => {
-        console.log(
-          'Transaction completed successfully for stores:',
-          storeNames
-        );
-      };
+      transaction.oncomplete = () => {};
 
       transaction.onerror = () => {
         console.error(

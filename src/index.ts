@@ -43,9 +43,6 @@ class BackChannelPlugin implements IBackChannelPlugin {
         .fakeData;
       if (fakeData && fakeData.databases && fakeData.databases.length > 0) {
         const firstDb = fakeData.databases[0];
-        console.log(
-          `Using fake database configuration: ${firstDb.name} v${firstDb.version}`
-        );
         dbService = new DatabaseService(
           undefined,
           firstDb.name,
@@ -111,8 +108,6 @@ class BackChannelPlugin implements IBackChannelPlugin {
       for (const key of keysToRemove) {
         localStorage.removeItem(key);
       }
-
-      console.log('Cleared BackChannel localStorage entries');
     } catch (error) {
       console.warn('Failed to clear BackChannel localStorage:', error);
     }
@@ -126,14 +121,6 @@ class BackChannelPlugin implements IBackChannelPlugin {
 
     try {
       this.setupEventListeners();
-
-      if (this.config.debugMode) {
-        console.log('BackChannel plugin initialized with config:', this.config);
-        console.log('BackChannel enabled for this page:', this.isEnabled);
-      } else {
-        console.log('BackChannel plugin initialized');
-        console.log('BackChannel enabled for this page:', this.isEnabled);
-      }
     } catch (error) {
       console.error('Failed to initialize BackChannel plugin:', error);
       throw error;
@@ -155,8 +142,6 @@ class BackChannelPlugin implements IBackChannelPlugin {
   }
 
   private async onDOMReady(): Promise<void> {
-    console.log('BackChannel DOM ready');
-
     // Check if BackChannel should be enabled for this page using static method
     // This doesn't create a database connection unless there's an existing feedback package
     try {
@@ -167,14 +152,10 @@ class BackChannelPlugin implements IBackChannelPlugin {
         // Only create database service if there's an existing package
         const db = await this.getDatabaseService();
         this.isEnabled = await db.isBackChannelEnabled();
-        console.log('BackChannel enabled for this page:', this.isEnabled);
       } else {
         // No existing package, remain disabled and clear any localStorage
         this.isEnabled = false;
         this.clearBackChannelLocalStorage();
-        console.log(
-          'BackChannel disabled - no existing feedback package found'
-        );
       }
     } catch (error) {
       console.error('Failed to check if BackChannel should be enabled:', error);
@@ -196,8 +177,6 @@ class BackChannelPlugin implements IBackChannelPlugin {
         (iconElement as unknown as { connectedCallback: () => void })
           .connectedCallback
       ) {
-        console.log('Lit component available, using it');
-
         // Cast to the proper type
         this.icon = iconElement as BackChannelIcon;
 
@@ -219,14 +198,11 @@ class BackChannelPlugin implements IBackChannelPlugin {
         (this.icon as BackChannelIconAPI).setClickHandler(() =>
           this.handleIconClick()
         );
-
-        console.log('Lit component initialized successfully');
       } else {
         throw new Error('Lit component not properly registered');
       }
     } catch (error) {
       console.error('Failed to initialize Lit component:', error);
-      console.log('Falling back to basic icon implementation');
       this.initializeFallbackIcon();
     }
   }
@@ -255,7 +231,6 @@ class BackChannelPlugin implements IBackChannelPlugin {
     icon.innerHTML = '💬';
     icon.addEventListener('click', () => this.handleIconClick());
     document.body.appendChild(icon);
-    console.log('Fallback icon created');
   }
 
   private injectStyles(): void {
@@ -355,16 +330,8 @@ class BackChannelPlugin implements IBackChannelPlugin {
   }
 
   private handleIconClick(): void {
-    console.log(
-      'BackChannel icon clicked, current state:',
-      this.state,
-      'enabled:',
-      this.isEnabled
-    );
-
     // If not enabled, always show package creation modal
     if (!this.isEnabled) {
-      console.log('BackChannel not enabled, opening package creation modal');
       if (this.icon && typeof this.icon.openPackageModal === 'function') {
         this.icon.openPackageModal();
       } else {
@@ -394,11 +361,9 @@ class BackChannelPlugin implements IBackChannelPlugin {
 
       if (metadata) {
         // Metadata exists, activate capture mode
-        console.log('Existing metadata found:', metadata);
         this.setState(FeedbackState.CAPTURE);
       } else {
         // No metadata, show package creation modal
-        console.log('No metadata found, opening package creation modal');
         if (this.icon && typeof this.icon.openPackageModal === 'function') {
           this.icon.openPackageModal();
         } else {
@@ -428,8 +393,6 @@ class BackChannelPlugin implements IBackChannelPlugin {
         this.icon.setAttribute('state', newState);
       }
     }
-
-    console.log('BackChannel state changed to:', newState);
   }
 
   getState(): FeedbackState {
@@ -459,8 +422,6 @@ class BackChannelPlugin implements IBackChannelPlugin {
           this.icon.setAttribute('enabled', 'true');
         }
       }
-
-      console.log('BackChannel enabled after package creation');
     } catch (error) {
       console.error('Error enabling BackChannel:', error);
     }

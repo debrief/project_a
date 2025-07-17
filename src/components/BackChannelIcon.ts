@@ -267,8 +267,7 @@ export class BackChannelIcon extends LitElement implements BackChannelIconAPI {
     this.packageModal = new PackageCreationModal();
     this.packageModal.databaseService = dbService;
     this.packageModal.options = {
-      onSuccess: metadata => {
-        console.log('Package created successfully:', metadata);
+      onSuccess: () => {
         // Enable BackChannel and set to capture mode
         this.setEnabled(true);
         this.setState(FeedbackState.CAPTURE);
@@ -278,9 +277,7 @@ export class BackChannelIcon extends LitElement implements BackChannelIconAPI {
           window.BackChannel.enableBackChannel();
         }
       },
-      onCancel: () => {
-        console.log('Package creation cancelled');
-      },
+      onCancel: () => {},
       onError: error => {
         console.error('Package creation failed:', error);
         alert('Failed to create feedback package. Please try again.');

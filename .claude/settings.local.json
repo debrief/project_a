@@ -25,7 +25,8 @@
       "Bash(timeout 30s yarn test:integration --grep \"should display BackChannel icon after initialization\")",
       "Bash(pkill:*)",
       "Bash(mv:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }
