@@ -38,6 +38,9 @@ class BackChannelPlugin implements IBackChannelPlugin {
   private icon: BackChannelIcon | null = null;
   private sidebar: BackChannelSidebar | null = null;
   private isEnabled: boolean = false;
+  private isSelectingElement: boolean = false;
+  private selectionCancelButton: HTMLElement | null = null;
+  private currentHighlightedElement: HTMLElement | null = null;
 
   constructor() {
     this.config = this.getDefaultConfig();
@@ -430,15 +433,8 @@ class BackChannelPlugin implements IBackChannelPlugin {
       this.sidebar.hide();
     }
 
-    // TODO: Implement element selection logic
     console.log('Starting element selection...');
-
-    // For now, just show sidebar again after a short delay
-    setTimeout(() => {
-      if (this.sidebar) {
-        this.sidebar.show();
-      }
-    }, 2000);
+    this.enableElementSelection();
   }
 
   private handleExportComments(): void {
@@ -457,6 +453,282 @@ class BackChannelPlugin implements IBackChannelPlugin {
       this.icon.style.display = 'none';
     } else {
       this.icon.style.display = 'flex';
+    }
+  }
+
+  private enableElementSelection(): void {
+    if (this.isSelectingElement) return;
+
+    this.isSelectingElement = true;
+    this.createCancelButton();
+    this.addSelectionEventListeners();
+    this.addSelectionStyles();
+
+    // Change cursor to indicate selection mode
+    document.body.style.cursor = 'crosshair';
+  }
+
+  private disableElementSelection(): void {
+    if (!this.isSelectingElement) return;
+
+    this.isSelectingElement = false;
+    this.removeCancelButton();
+    this.removeSelectionEventListeners();
+    this.removeSelectionStyles();
+    this.clearHighlight();
+
+    // Restore normal cursor
+    document.body.style.cursor = '';
+
+    // Show sidebar again
+    if (this.sidebar) {
+      this.sidebar.show();
+    }
+  }
+
+  private createCancelButton(): void {
+    if (this.selectionCancelButton) return;
+
+    this.selectionCancelButton = document.createElement('button');
+    this.selectionCancelButton.id = 'backchannel-cancel-selection';
+    this.selectionCancelButton.textContent = 'Cancel selection';
+    this.selectionCancelButton.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #dc3545;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      z-index: 10001;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      transition: all 0.2s ease;
+    `;
+
+    this.selectionCancelButton.addEventListener('mouseenter', () => {
+      if (this.selectionCancelButton) {
+        this.selectionCancelButton.style.background = '#c82333';
+        this.selectionCancelButton.style.transform = 'translateY(-1px)';
+      }
+    });
+
+    this.selectionCancelButton.addEventListener('mouseleave', () => {
+      if (this.selectionCancelButton) {
+        this.selectionCancelButton.style.background = '#dc3545';
+        this.selectionCancelButton.style.transform = 'translateY(0)';
+      }
+    });
+
+    this.selectionCancelButton.addEventListener('click', () => {
+      console.log('Element selection cancelled');
+      this.disableElementSelection();
+    });
+
+    document.body.appendChild(this.selectionCancelButton);
+  }
+
+  private removeCancelButton(): void {
+    if (this.selectionCancelButton && this.selectionCancelButton.parentNode) {
+      this.selectionCancelButton.parentNode.removeChild(
+        this.selectionCancelButton
+      );
+      this.selectionCancelButton = null;
+    }
+  }
+
+  private addSelectionEventListeners(): void {
+    document.addEventListener('mouseover', this.handleElementHover);
+    document.addEventListener('mouseout', this.handleElementLeave);
+    document.addEventListener('click', this.handleElementClick);
+    document.addEventListener('keydown', this.handleSelectionKeydown);
+  }
+
+  private removeSelectionEventListeners(): void {
+    document.removeEventListener('mouseover', this.handleElementHover);
+    document.removeEventListener('mouseout', this.handleElementLeave);
+    document.removeEventListener('click', this.handleElementClick);
+    document.removeEventListener('keydown', this.handleSelectionKeydown);
+  }
+
+  private handleElementHover = (event: MouseEvent): void => {
+    if (!this.isSelectingElement) return;
+
+    const target = event.target as HTMLElement;
+    if (this.shouldIgnoreElement(target)) return;
+
+    this.highlightElement(target);
+  };
+
+  private handleElementLeave = (event: MouseEvent): void => {
+    if (!this.isSelectingElement) return;
+
+    const target = event.target as HTMLElement;
+    if (this.shouldIgnoreElement(target)) return;
+
+    this.clearHighlight();
+  };
+
+  private handleElementClick = (event: MouseEvent): void => {
+    if (!this.isSelectingElement) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const target = event.target as HTMLElement;
+    if (this.shouldIgnoreElement(target)) return;
+
+    this.selectElement(target);
+  };
+
+  private handleSelectionKeydown = (event: KeyboardEvent): void => {
+    if (!this.isSelectingElement) return;
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      console.log('Element selection cancelled (Escape key)');
+      this.disableElementSelection();
+    }
+  };
+
+  private shouldIgnoreElement(element: HTMLElement): boolean {
+    // Ignore BackChannel elements
+    if (
+      element.id === 'backchannel-cancel-selection' ||
+      element.tagName === 'BACKCHANNEL-ICON' ||
+      element.tagName === 'BACKCHANNEL-SIDEBAR'
+    ) {
+      return true;
+    }
+
+    // Ignore elements that are children of BackChannel components
+    if (
+      element.closest('backchannel-icon') ||
+      element.closest('backchannel-sidebar') ||
+      element.closest('#backchannel-cancel-selection')
+    ) {
+      return true;
+    }
+
+    return false;
+  }
+
+  private highlightElement(element: HTMLElement): void {
+    this.clearHighlight();
+    this.currentHighlightedElement = element;
+    element.classList.add('backchannel-highlight');
+  }
+
+  private clearHighlight(): void {
+    if (this.currentHighlightedElement) {
+      this.currentHighlightedElement.classList.remove('backchannel-highlight');
+      this.currentHighlightedElement = null;
+    }
+  }
+
+  private selectElement(element: HTMLElement): void {
+    const elementInfo = this.getElementInfo(element);
+
+    console.log('Selected element details:', elementInfo);
+
+    // For now, just log the selection and return to sidebar
+    // In a complete implementation, this would open a comment creation dialog
+
+    this.disableElementSelection();
+  }
+
+  private getElementInfo(element: HTMLElement): {
+    tagName: string;
+    xpath: string;
+    textContent: string;
+    attributes: Record<string, string>;
+    boundingRect: DOMRect;
+  } {
+    return {
+      tagName: element.tagName.toLowerCase(),
+      xpath: this.getXPath(element),
+      textContent: element.textContent?.trim() || '',
+      attributes: this.getElementAttributes(element),
+      boundingRect: element.getBoundingClientRect(),
+    };
+  }
+
+  private getXPath(element: HTMLElement): string {
+    const parts: string[] = [];
+    let current: HTMLElement | null = element;
+
+    while (current && current.nodeType === Node.ELEMENT_NODE) {
+      let index = 0;
+      const siblings = current.parentNode?.children || [];
+
+      for (let i = 0; i < siblings.length; i++) {
+        if (siblings[i] === current) {
+          index = i + 1;
+          break;
+        }
+      }
+
+      const tagName = current.tagName.toLowerCase();
+      const part = index > 1 ? `${tagName}[${index}]` : tagName;
+      parts.unshift(part);
+
+      current = current.parentElement;
+    }
+
+    return '/' + parts.join('/');
+  }
+
+  private getElementAttributes(element: HTMLElement): Record<string, string> {
+    const attributes: Record<string, string> = {};
+
+    for (let i = 0; i < element.attributes.length; i++) {
+      const attr = element.attributes[i];
+      attributes[attr.name] = attr.value;
+    }
+
+    return attributes;
+  }
+
+  private addSelectionStyles(): void {
+    if (document.getElementById('backchannel-selection-styles')) return;
+
+    const styleElement = document.createElement('style');
+    styleElement.id = 'backchannel-selection-styles';
+    styleElement.textContent = `
+      .backchannel-highlight {
+        outline: 2px solid #007acc !important;
+        outline-offset: 2px !important;
+        background-color: rgba(0, 122, 204, 0.1) !important;
+        cursor: crosshair !important;
+      }
+      
+      .backchannel-highlight::before {
+        content: "Click to select";
+        position: absolute;
+        top: -25px;
+        left: 0;
+        background: #007acc;
+        color: white;
+        padding: 2px 6px;
+        font-size: 12px;
+        border-radius: 2px;
+        pointer-events: none;
+        z-index: 10000;
+      }
+    `;
+
+    document.head.appendChild(styleElement);
+  }
+
+  private removeSelectionStyles(): void {
+    const styleElement = document.getElementById(
+      'backchannel-selection-styles'
+    );
+    if (styleElement && styleElement.parentNode) {
+      styleElement.parentNode.removeChild(styleElement);
     }
   }
 
