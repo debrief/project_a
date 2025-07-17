@@ -43,9 +43,13 @@
    - Implement proper styling for comment entries (consistent spacing, typography)
    - Handle empty state when no comments exist
 
-5. **Implement sidebar state persistence and restoration**
+5. **Implement sidebar state persistence and initialization behavior**
    - Use localStorage key `backchannel-sidebar-visible` to track sidebar visibility state
    - Save state when user manually opens/closes the sidebar
+   - **CRITICAL INITIALIZATION BEHAVIOR**: When a page loads with an existing feedback package:
+     * BackChannel should automatically initialize in **capture mode** (blue icon state)
+     * The sidebar should be shown **only if** `backchannel-sidebar-visible` is `true` in localStorage
+     * This ensures users can immediately start capturing feedback when a package exists
    - Restore sidebar visibility when navigating to any page within the same feedback package (same document root URL)
    - Restoration should occur after UI components are fully loaded and sidebar element exists in DOM
    - If localStorage shows sidebar was visible, restore to visible and automatically load/show comments for the current page
@@ -69,6 +73,7 @@
 - Connect to existing storage service to retrieve comments for current page
 - Integrate with the BC icon state management from Task 2.1
 - Ensure sidebar works with the feedback package system from Task 2.2
+- **CRITICAL**: Update main plugin initialization logic to start in capture mode when feedback package exists
 - Follow the UI state behaviors defined in `docs/project/UI-states.md`
 
 **Technical Constraints:**
@@ -85,6 +90,8 @@
 - Toolbar with "Capture Feedback" and "Export" buttons is functional
 - Capture mode properly hides sidebar and shows cancel button
 - Comment list displays seeded database comments for current page
+- **CRITICAL**: BackChannel initializes in capture mode (blue) when feedback package exists, not inactive mode (grey)
+- Sidebar shows only if `backchannel-sidebar-visible` is `true` in localStorage during initialization
 - Sidebar state persists and automatically restores when navigating within the same feedback package
 - Restoration is seamless with no visual indication to the user
 - Comments for current page are automatically loaded during restoration
@@ -95,9 +102,10 @@
 2. Toolbar implementation with capture and export buttons
 3. Capture mode interaction handling with cancel functionality
 4. Comment list display with proper formatting
-5. localStorage integration for state persistence and automatic restoration across pages in same feedback package
-6. Updated e2e tests that verify all sidebar functionality
-7. Console logging of element details during capture mode
+5. **CRITICAL**: Fixed main plugin initialization to start in capture mode when feedback package exists
+6. localStorage integration for state persistence and automatic restoration across pages in same feedback package
+7. Updated e2e tests that verify all sidebar functionality including correct initialization behavior
+8. Console logging of element details during capture mode
 
 **Format:** TypeScript/JavaScript code following existing project patterns, with accompanying Playwright e2e tests.
 
