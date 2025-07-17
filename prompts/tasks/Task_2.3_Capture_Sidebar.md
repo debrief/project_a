@@ -93,8 +93,8 @@
 - Comment list displays seeded database comments for current page
 - **CRITICAL**: Correct initialization states based on feedback package and localStorage:
   * Grey (inactive) when no feedback package exists
-  * Blue (capture) when feedback package exists but sidebar localStorage is false
-  * Green (review) when feedback package exists and sidebar localStorage is true, with sidebar automatically visible
+  * Blue (active) when feedback package exists but sidebar localStorage is false
+  * Green (capture) when feedback package exists and sidebar localStorage is true, with sidebar automatically visible
 - Sidebar state persists and automatically restores when navigating within the same feedback package
 - Restoration is seamless with no visual indication to the user
 - Comments for current page are automatically loaded during restoration
