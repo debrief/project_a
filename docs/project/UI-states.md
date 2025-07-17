@@ -115,7 +115,7 @@ Page Load:
 │
 └── Package Exists
     ├── localStorage sidebar = false → Blue (Active, sidebar hidden)
-    │   └── Click → Green (Capture, sidebar visible)
+    │   └── Click → Hidden (Capture, sidebar visible)
     │
     └── localStorage sidebar = true → Icon not shown, capture mode, sidebar visible)
         └── Close sidebar → Blue (Active, sidebar hidden)
