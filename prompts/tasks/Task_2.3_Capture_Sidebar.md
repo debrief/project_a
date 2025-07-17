@@ -22,28 +22,8 @@
    - Ensure sidebar doesn't interfere with existing page content
    - Use CSS transitions for smooth animations when opening/closing
 
-2. **Implement "Capture Feedback" and "Export" buttons in toolbar at top of panel**
-   - Create a toolbar section at the top of the sidebar
-   - Add "Capture Feedback" button that initiates element selection mode
-   - Add "Export" button for CSV export functionality
-   - Style buttons consistently with the overall design system
-   - Ensure buttons are accessible and clearly labeled
 
-3. **Handle "Capture Feedback" mode interaction**
-   - When "Capture Feedback" is clicked: hide sidebar to allow element selection
-   - Display a "Cancel selection" button in the top-right corner of the viewport
-   - Log element details to console when an element is clicked during capture mode
-   - Return sidebar to visible state after element selection or cancellation
-   - Provide clear visual feedback about the current state (capture mode active/inactive)
-
-4. **Add list of comments in sidebar**
-   - Create a scrollable list section below the toolbar
-   - Display comments from the current feedback package for the current page
-   - Show comment metadata: element label, comment text, timestamp, reviewer initials
-   - Implement proper styling for comment entries (consistent spacing, typography)
-   - Handle empty state when no comments exist
-
-5. **Implement sidebar state persistence and initialization behavior**
+2. **Implement sidebar state persistence and initialization behavior**
    - Use localStorage key `backchannel-sidebar-visible` to track sidebar visibility state
    - Save state when user manually opens/closes the sidebar
    - **CRITICAL INITIALIZATION BEHAVIOR**: When a page loads with an existing feedback package:
@@ -57,6 +37,26 @@
    - If restoration fails (e.g., sidebar element not found, comments can't load), log error to console but don't show sidebar
    - No visual indication to user that sidebar was auto-restored - make it appear seamless
    - Handle edge cases like localStorage being unavailable
+3. **Implement "Capture Feedback" and "Export" buttons in toolbar at top of panel**
+   - Create a toolbar section at the top of the sidebar
+   - Add "Capture Feedback" button that initiates element selection mode
+   - Add "Export" button for CSV export functionality
+   - Style buttons consistently with the overall design system
+   - Ensure buttons are accessible and clearly labeled
+
+4. **Handle "Capture Feedback" mode interaction**
+   - When "Capture Feedback" is clicked: hide sidebar to allow element selection
+   - Display a "Cancel selection" button in the top-right corner of the viewport
+   - Log element details to console when an element is clicked during capture mode
+   - Return sidebar to visible state after element selection or cancellation
+   - Provide clear visual feedback about the current state (capture mode active/inactive)
+
+5. **Add list of comments in sidebar**
+   - Create a scrollable list section below the toolbar
+   - Display comments from the current feedback package for the current page
+   - Show comment metadata: element label, comment text, timestamp, reviewer initials
+   - Implement proper styling for comment entries (consistent spacing, typography)
+   - Handle empty state when no comments exist
 
 6. **Update e2e tests to verify sidebar functionality**
    - Create tests that verify sidebar toggle functionality
