@@ -41,6 +41,7 @@ class BackChannelPlugin implements IBackChannelPlugin {
   private isSelectingElement: boolean = false;
   private selectionCancelButton: HTMLElement | null = null;
   private currentHighlightedElement: HTMLElement | null = null;
+  private clickTimeout: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     this.config = this.getDefaultConfig();
@@ -477,6 +478,12 @@ class BackChannelPlugin implements IBackChannelPlugin {
     this.removeSelectionStyles();
     this.clearHighlight();
 
+    // Clear any pending click timeout
+    if (this.clickTimeout) {
+      clearTimeout(this.clickTimeout);
+      this.clickTimeout = null;
+    }
+
     // Restore normal cursor
     document.body.style.cursor = '';
 
@@ -491,7 +498,12 @@ class BackChannelPlugin implements IBackChannelPlugin {
 
     this.selectionCancelButton = document.createElement('button');
     this.selectionCancelButton.id = 'backchannel-cancel-selection';
-    this.selectionCancelButton.textContent = 'Cancel selection';
+    this.selectionCancelButton.textContent = 'Cancel selection (Esc)';
+    this.selectionCancelButton.setAttribute(
+      'aria-label',
+      'Cancel element selection'
+    );
+    this.selectionCancelButton.setAttribute('tabindex', '0');
     this.selectionCancelButton.style.cssText = `
       position: fixed;
       top: 20px;
@@ -499,20 +511,27 @@ class BackChannelPlugin implements IBackChannelPlugin {
       background: #dc3545;
       color: white;
       border: none;
-      border-radius: 4px;
-      padding: 10px 16px;
+      border-radius: 6px;
+      padding: 12px 18px;
       font-size: 14px;
       font-weight: 500;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       cursor: pointer;
       z-index: 10001;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
       transition: all 0.2s ease;
+      user-select: none;
+      min-width: 140px;
+      text-align: center;
     `;
 
+    // Enhanced hover effects
     this.selectionCancelButton.addEventListener('mouseenter', () => {
       if (this.selectionCancelButton) {
         this.selectionCancelButton.style.background = '#c82333';
-        this.selectionCancelButton.style.transform = 'translateY(-1px)';
+        this.selectionCancelButton.style.transform = 'translateY(-2px)';
+        this.selectionCancelButton.style.boxShadow =
+          '0 6px 16px rgba(220, 53, 69, 0.4)';
       }
     });
 
@@ -520,15 +539,54 @@ class BackChannelPlugin implements IBackChannelPlugin {
       if (this.selectionCancelButton) {
         this.selectionCancelButton.style.background = '#dc3545';
         this.selectionCancelButton.style.transform = 'translateY(0)';
+        this.selectionCancelButton.style.boxShadow =
+          '0 4px 12px rgba(220, 53, 69, 0.3)';
       }
     });
 
-    this.selectionCancelButton.addEventListener('click', () => {
-      console.log('Element selection cancelled');
-      this.disableElementSelection();
+    // Focus handling for accessibility
+    this.selectionCancelButton.addEventListener('focus', () => {
+      if (this.selectionCancelButton) {
+        this.selectionCancelButton.style.outline = '2px solid #ffffff';
+        this.selectionCancelButton.style.outlineOffset = '2px';
+      }
+    });
+
+    this.selectionCancelButton.addEventListener('blur', () => {
+      if (this.selectionCancelButton) {
+        this.selectionCancelButton.style.outline = 'none';
+      }
+    });
+
+    // Click handler with debouncing
+    let cancelClickTimeout: ReturnType<typeof setTimeout> | null = null;
+    this.selectionCancelButton.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (cancelClickTimeout) return; // Prevent rapid clicks
+
+      cancelClickTimeout = setTimeout(() => {
+        console.log('Element selection cancelled via button');
+        this.disableElementSelection();
+        cancelClickTimeout = null;
+      }, 100);
+    });
+
+    // Keyboard support
+    this.selectionCancelButton.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        this.selectionCancelButton?.click();
+      }
     });
 
     document.body.appendChild(this.selectionCancelButton);
+
+    // Auto-focus for keyboard accessibility
+    setTimeout(() => {
+      this.selectionCancelButton?.focus();
+    }, 100);
   }
 
   private removeCancelButton(): void {
@@ -541,8 +599,13 @@ class BackChannelPlugin implements IBackChannelPlugin {
   }
 
   private addSelectionEventListeners(): void {
-    document.addEventListener('mouseover', this.handleElementHover);
-    document.addEventListener('mouseout', this.handleElementLeave);
+    // Use event delegation for better performance
+    document.addEventListener('mouseover', this.handleElementHover, {
+      passive: true,
+    });
+    document.addEventListener('mouseout', this.handleElementLeave, {
+      passive: true,
+    });
     document.addEventListener('click', this.handleElementClick);
     document.addEventListener('keydown', this.handleSelectionKeydown);
   }
@@ -560,16 +623,40 @@ class BackChannelPlugin implements IBackChannelPlugin {
     const target = event.target as HTMLElement;
     if (this.shouldIgnoreElement(target)) return;
 
-    this.highlightElement(target);
+    // Find the most appropriate element to highlight (handle nested elements)
+    const elementToHighlight = this.findBestElementToHighlight(target);
+
+    // Only highlight if it's different from current
+    if (elementToHighlight !== this.currentHighlightedElement) {
+      this.highlightElement(elementToHighlight);
+    }
   };
 
   private handleElementLeave = (event: MouseEvent): void => {
     if (!this.isSelectingElement) return;
 
     const target = event.target as HTMLElement;
-    if (this.shouldIgnoreElement(target)) return;
+    const relatedTarget = event.relatedTarget as HTMLElement;
 
-    this.clearHighlight();
+    // Don't clear highlight if moving to a child element or related element
+    if (
+      relatedTarget &&
+      (target.contains(relatedTarget) ||
+        relatedTarget.contains(target) ||
+        this.shouldIgnoreElement(target))
+    ) {
+      return;
+    }
+
+    // Use a small delay to prevent flicker when moving between elements
+    setTimeout(() => {
+      if (
+        this.isSelectingElement &&
+        this.currentHighlightedElement === target
+      ) {
+        this.clearHighlight();
+      }
+    }, 10);
   };
 
   private handleElementClick = (event: MouseEvent): void => {
@@ -581,16 +668,65 @@ class BackChannelPlugin implements IBackChannelPlugin {
     const target = event.target as HTMLElement;
     if (this.shouldIgnoreElement(target)) return;
 
-    this.selectElement(target);
+    // Handle potential double/rapid clicks by debouncing
+    if (this.clickTimeout) {
+      clearTimeout(this.clickTimeout);
+    }
+
+    this.clickTimeout = setTimeout(() => {
+      // Find the best element to select (same logic as highlighting)
+      const elementToSelect = this.findBestElementToHighlight(target);
+      this.selectElement(elementToSelect);
+      this.clickTimeout = null;
+    }, 100);
   };
 
   private handleSelectionKeydown = (event: KeyboardEvent): void => {
     if (!this.isSelectingElement) return;
 
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      console.log('Element selection cancelled (Escape key)');
-      this.disableElementSelection();
+    switch (event.key) {
+      case 'Escape':
+        event.preventDefault();
+        console.log('Element selection cancelled (Escape key)');
+        this.disableElementSelection();
+        break;
+
+      case 'Enter':
+        event.preventDefault();
+        if (this.currentHighlightedElement) {
+          const elementToSelect = this.findBestElementToHighlight(
+            this.currentHighlightedElement
+          );
+          this.selectElement(elementToSelect);
+        }
+        break;
+
+      case 'Tab':
+        // Allow tab navigation to the cancel button
+        if (
+          this.selectionCancelButton &&
+          !this.selectionCancelButton.contains(event.target as Node)
+        ) {
+          event.preventDefault();
+          this.selectionCancelButton.focus();
+        }
+        break;
+
+      case 'ArrowUp':
+      case 'ArrowDown':
+      case 'ArrowLeft':
+      case 'ArrowRight':
+        event.preventDefault();
+        this.navigateToNextElement(event.key);
+        break;
+
+      case 'h':
+      case 'H':
+        if (event.ctrlKey || event.metaKey) {
+          event.preventDefault();
+          this.showKeyboardHelp();
+        }
+        break;
     }
   };
 
@@ -613,13 +749,107 @@ class BackChannelPlugin implements IBackChannelPlugin {
       return true;
     }
 
+    // Ignore script tags, style tags, and other non-content elements
+    if (
+      ['SCRIPT', 'STYLE', 'NOSCRIPT', 'META', 'LINK', 'HEAD', 'TITLE'].includes(
+        element.tagName
+      )
+    ) {
+      return true;
+    }
+
+    // Ignore elements with no visible content
+    if (element.offsetWidth === 0 && element.offsetHeight === 0) {
+      return true;
+    }
+
+    // Ignore elements that are not displayed
+    const computedStyle = window.getComputedStyle(element);
+    if (
+      computedStyle.display === 'none' ||
+      computedStyle.visibility === 'hidden'
+    ) {
+      return true;
+    }
+
     return false;
+  }
+
+  private findBestElementToHighlight(target: HTMLElement): HTMLElement {
+    // Start with the target element
+    let current = target;
+
+    // If target is a text node or inline element, try to find a better parent
+    const inlineElements = [
+      'SPAN',
+      'A',
+      'STRONG',
+      'EM',
+      'I',
+      'B',
+      'CODE',
+      'SMALL',
+    ];
+
+    // Walk up the DOM to find a good element to highlight
+    while (current && current !== document.body) {
+      // Skip if this element should be ignored
+      if (this.shouldIgnoreElement(current)) {
+        current = current.parentElement!;
+        continue;
+      }
+
+      // Check if element has meaningful content or structure
+      const hasContent = current.textContent?.trim().length > 0;
+      const hasSize = current.offsetWidth > 20 && current.offsetHeight > 20;
+      const isBlockElement = !inlineElements.includes(current.tagName);
+
+      // If it's a good candidate, use it
+      if (hasContent && hasSize && (isBlockElement || current === target)) {
+        return current;
+      }
+
+      // Move to parent
+      current = current.parentElement!;
+    }
+
+    // Fall back to original target if no better element found
+    return target;
   }
 
   private highlightElement(element: HTMLElement): void {
     this.clearHighlight();
     this.currentHighlightedElement = element;
     element.classList.add('backchannel-highlight');
+
+    // Add intelligent tooltip positioning based on element position
+    this.positionTooltip(element);
+  }
+
+  private positionTooltip(element: HTMLElement): void {
+    const rect = element.getBoundingClientRect();
+    const viewport = {
+      width: window.innerWidth,
+      height: window.innerHeight,
+    };
+
+    // Remove existing positioning classes
+    element.classList.remove('tooltip-bottom', 'tooltip-left', 'tooltip-right');
+
+    // Check if tooltip would be cut off at top (need to position below)
+    if (rect.top < 40) {
+      element.classList.add('tooltip-bottom');
+    }
+
+    // Check if tooltip would be cut off at left (need to position from left edge)
+    if (rect.left < 100) {
+      element.classList.add('tooltip-left');
+    }
+
+    // Check if tooltip would be cut off at right (need to position from right edge)
+    if (rect.right > viewport.width - 100) {
+      element.classList.add('tooltip-right');
+    }
   }
 
   private clearHighlight(): void {
@@ -643,16 +873,22 @@ class BackChannelPlugin implements IBackChannelPlugin {
   private getElementInfo(element: HTMLElement): {
     tagName: string;
     xpath: string;
+    cssSelector: string;
     textContent: string;
     attributes: Record<string, string>;
     boundingRect: DOMRect;
+    elementIndex: number;
+    parentInfo: string;
   } {
     return {
       tagName: element.tagName.toLowerCase(),
       xpath: this.getXPath(element),
+      cssSelector: this.getCSSSelector(element),
       textContent: element.textContent?.trim() || '',
       attributes: this.getElementAttributes(element),
       boundingRect: element.getBoundingClientRect(),
+      elementIndex: this.getElementIndex(element),
+      parentInfo: this.getParentInfo(element),
     };
   }
 
@@ -660,21 +896,45 @@ class BackChannelPlugin implements IBackChannelPlugin {
     const parts: string[] = [];
     let current: HTMLElement | null = element;
 
-    while (current && current.nodeType === Node.ELEMENT_NODE) {
-      let index = 0;
-      const siblings = current.parentNode?.children || [];
+    while (
+      current &&
+      current.nodeType === Node.ELEMENT_NODE &&
+      current !== document.body
+    ) {
+      let selector = current.tagName.toLowerCase();
 
-      for (let i = 0; i < siblings.length; i++) {
-        if (siblings[i] === current) {
-          index = i + 1;
-          break;
+      // Add ID if present (makes XPath more specific and reliable)
+      if (current.id) {
+        selector += `[@id='${current.id}']`;
+        parts.unshift(selector);
+        break; // ID should be unique, so we can stop here
+      }
+
+      // Add class if present (for better specificity)
+      if (current.className && typeof current.className === 'string') {
+        const classes = current.className
+          .trim()
+          .split(/\s+/)
+          .filter(c => c.length > 0);
+        if (classes.length > 0) {
+          // Use the first class for specificity
+          selector += `[@class='${classes[0]}']`;
         }
       }
 
-      const tagName = current.tagName.toLowerCase();
-      const part = index > 1 ? `${tagName}[${index}]` : tagName;
-      parts.unshift(part);
+      // Calculate position among siblings with the same tag
+      const siblings = Array.from(current.parentNode?.children || []);
+      const sameTagSiblings = siblings.filter(
+        sibling =>
+          sibling.tagName.toLowerCase() === current!.tagName.toLowerCase()
+      );
 
+      if (sameTagSiblings.length > 1) {
+        const index = sameTagSiblings.indexOf(current) + 1;
+        selector += `[${index}]`;
+      }
+
+      parts.unshift(selector);
       current = current.parentElement;
     }
 
@@ -692,6 +952,209 @@ class BackChannelPlugin implements IBackChannelPlugin {
     return attributes;
   }
 
+  private getCSSSelector(element: HTMLElement): string {
+    const parts: string[] = [];
+    let current: HTMLElement | null = element;
+
+    while (current && current !== document.body) {
+      let selector = current.tagName.toLowerCase();
+
+      // Use ID if available (most specific)
+      if (current.id) {
+        selector += `#${current.id}`;
+        parts.unshift(selector);
+        break;
+      }
+
+      // Use class if available
+      if (current.className && typeof current.className === 'string') {
+        const classes = current.className
+          .trim()
+          .split(/\s+/)
+          .filter(c => c.length > 0);
+        if (classes.length > 0) {
+          selector += `.${classes[0]}`;
+        }
+      }
+
+      // Add nth-child if needed for specificity
+      if (current.parentElement) {
+        const siblings = Array.from(current.parentElement.children);
+        const index = siblings.indexOf(current);
+        if (siblings.length > 1) {
+          selector += `:nth-child(${index + 1})`;
+        }
+      }
+
+      parts.unshift(selector);
+      current = current.parentElement;
+    }
+
+    return parts.join(' > ');
+  }
+
+  private getElementIndex(element: HTMLElement): number {
+    if (!element.parentElement) return 0;
+
+    const siblings = Array.from(element.parentElement.children);
+    return siblings.indexOf(element);
+  }
+
+  private getParentInfo(element: HTMLElement): string {
+    if (!element.parentElement) return 'none';
+
+    const parent = element.parentElement;
+    let info = parent.tagName.toLowerCase();
+
+    if (parent.id) {
+      info += `#${parent.id}`;
+    } else if (parent.className && typeof parent.className === 'string') {
+      const classes = parent.className
+        .trim()
+        .split(/\s+/)
+        .filter(c => c.length > 0);
+      if (classes.length > 0) {
+        info += `.${classes[0]}`;
+      }
+    }
+
+    return info;
+  }
+
+  private navigateToNextElement(direction: string): void {
+    if (!this.currentHighlightedElement) return;
+
+    const current = this.currentHighlightedElement;
+    let next: HTMLElement | null = null;
+
+    switch (direction) {
+      case 'ArrowUp':
+        next = this.findElementInDirection(current, 'up');
+        break;
+      case 'ArrowDown':
+        next = this.findElementInDirection(current, 'down');
+        break;
+      case 'ArrowLeft':
+        next = this.findElementInDirection(current, 'left');
+        break;
+      case 'ArrowRight':
+        next = this.findElementInDirection(current, 'right');
+        break;
+    }
+
+    if (next && !this.shouldIgnoreElement(next)) {
+      this.highlightElement(next);
+      this.scrollElementIntoView(next);
+    }
+  }
+
+  private findElementInDirection(
+    current: HTMLElement,
+    direction: 'up' | 'down' | 'left' | 'right'
+  ): HTMLElement | null {
+    const rect = current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    // Get all selectable elements
+    const allElements = Array.from(document.querySelectorAll('*')).filter(
+      el => el instanceof HTMLElement && !this.shouldIgnoreElement(el)
+    ) as HTMLElement[];
+
+    let bestElement: HTMLElement | null = null;
+    let bestDistance = Infinity;
+
+    for (const element of allElements) {
+      if (element === current) continue;
+
+      const elementRect = element.getBoundingClientRect();
+      const elementCenterX = elementRect.left + elementRect.width / 2;
+      const elementCenterY = elementRect.top + elementRect.height / 2;
+
+      let isInDirection = false;
+      let distance = 0;
+
+      switch (direction) {
+        case 'up':
+          isInDirection = elementCenterY < centerY;
+          distance =
+            Math.abs(elementCenterX - centerX) + (centerY - elementCenterY);
+          break;
+        case 'down':
+          isInDirection = elementCenterY > centerY;
+          distance =
+            Math.abs(elementCenterX - centerX) + (elementCenterY - centerY);
+          break;
+        case 'left':
+          isInDirection = elementCenterX < centerX;
+          distance =
+            Math.abs(elementCenterY - centerY) + (centerX - elementCenterX);
+          break;
+        case 'right':
+          isInDirection = elementCenterX > centerX;
+          distance =
+            Math.abs(elementCenterY - centerY) + (elementCenterX - centerX);
+          break;
+      }
+
+      if (isInDirection && distance < bestDistance) {
+        bestDistance = distance;
+        bestElement = element;
+      }
+    }
+
+    return bestElement;
+  }
+
+  private scrollElementIntoView(element: HTMLElement): void {
+    element.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center',
+      inline: 'center',
+    });
+  }
+
+  private showKeyboardHelp(): void {
+    const helpMessage = `
+Keyboard shortcuts for element selection:
+• Escape: Cancel selection
+• Enter: Select highlighted element
+• Arrow keys: Navigate between elements
+• Tab: Focus cancel button
+• Ctrl+H: Show this help
+    `;
+
+    // Create a temporary help popup
+    const helpPopup = document.createElement('div');
+    helpPopup.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #333;
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      z-index: 10002;
+      font-family: monospace;
+      font-size: 14px;
+      line-height: 1.4;
+      white-space: pre-line;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      max-width: 400px;
+    `;
+    helpPopup.textContent = helpMessage;
+
+    document.body.appendChild(helpPopup);
+
+    // Remove help popup after 3 seconds
+    setTimeout(() => {
+      if (helpPopup.parentNode) {
+        helpPopup.parentNode.removeChild(helpPopup);
+      }
+    }, 3000);
+  }
+
   private addSelectionStyles(): void {
     if (document.getElementById('backchannel-selection-styles')) return;
 
@@ -703,20 +1166,83 @@ class BackChannelPlugin implements IBackChannelPlugin {
         outline-offset: 2px !important;
         background-color: rgba(0, 122, 204, 0.1) !important;
         cursor: crosshair !important;
+        position: relative !important;
+        transition: all 0.15s ease !important;
+      }
+      
+      .backchannel-highlight:hover {
+        outline-color: #0056b3 !important;
+        background-color: rgba(0, 86, 179, 0.15) !important;
       }
       
       .backchannel-highlight::before {
         content: "Click to select";
         position: absolute;
-        top: -25px;
-        left: 0;
+        top: -28px;
+        left: 50%;
+        transform: translateX(-50%);
         background: #007acc;
         color: white;
-        padding: 2px 6px;
-        font-size: 12px;
-        border-radius: 2px;
+        padding: 4px 8px;
+        font-size: 11px;
+        font-weight: 500;
+        border-radius: 3px;
         pointer-events: none;
         z-index: 10000;
+        white-space: nowrap;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        opacity: 0;
+        animation: fadeIn 0.2s ease forwards;
+      }
+      
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateX(-50%) translateY(-5px); }
+        to { opacity: 1; transform: translateX(-50%) translateY(0); }
+      }
+      
+      /* Handle tooltip positioning for elements near screen edges */
+      .backchannel-highlight.tooltip-bottom::before {
+        top: auto;
+        bottom: -28px;
+      }
+      
+      .backchannel-highlight.tooltip-left::before {
+        left: 0;
+        transform: translateX(0);
+      }
+      
+      .backchannel-highlight.tooltip-right::before {
+        left: auto;
+        right: 0;
+        transform: translateX(0);
+      }
+      
+      /* Responsive adjustments */
+      @media (max-width: 768px) {
+        .backchannel-highlight::before {
+          font-size: 10px;
+          padding: 3px 6px;
+        }
+      }
+      
+      /* High contrast mode support */
+      @media (prefers-contrast: high) {
+        .backchannel-highlight {
+          outline-width: 3px !important;
+          background-color: rgba(0, 122, 204, 0.2) !important;
+        }
+      }
+      
+      /* Reduced motion support */
+      @media (prefers-reduced-motion: reduce) {
+        .backchannel-highlight {
+          transition: none !important;
+        }
+        
+        .backchannel-highlight::before {
+          animation: none !important;
+          opacity: 1 !important;
+        }
       }
     `;
 
