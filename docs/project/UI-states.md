@@ -111,20 +111,20 @@ The BackChannel icon follows this state progression:
 Page Load:
 ├── No Package → Grey (Inactive)
 │   └── Click → Package Creation Modal
-│       └── Success → Blue (Capture, sidebar hidden)
+│       └── Success → Blue (Active, sidebar hidden)
 │
 └── Package Exists
-    ├── localStorage sidebar = false → Blue (Capture, sidebar hidden)
-    │   └── Click → Green (Review, sidebar visible)
+    ├── localStorage sidebar = false → Blue (Active, sidebar hidden)
+    │   └── Click → Green (Capture, sidebar visible)
     │
-    └── localStorage sidebar = true → Green (Review, sidebar visible)
-        └── Click → Grey (Inactive, sidebar hidden)
+    └── localStorage sidebar = true → Icon not shown, capture mode, sidebar visible)
+        └── Close sidebar → Blue (Active, sidebar hidden)
 ```
 
 ### State Transitions:
 - **Grey → Blue**: Package creation completed
-- **Blue → Green**: User clicks icon to show sidebar
-- **Green → Grey**: User clicks icon to hide sidebar and deactivate
+- **Blue → hidden**: User clicks icon to show sidebar
+- **hidden → Blue**: User clicks icon to hide sidebar and deactivate
 
 ### Key Features:
 - State automatically determined on page load
