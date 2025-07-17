@@ -668,6 +668,9 @@ export class DatabaseService implements StorageInterface {
 
       // Check if current path contains the pattern path
       const matches = currentPath.includes(patternPath);
+      console.log(
+        `URL path matching: ${currentPath} includes ${patternPath} = ${matches}`
+      );
 
       return matches;
     } catch (error) {

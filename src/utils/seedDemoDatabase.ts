@@ -287,6 +287,9 @@ export async function seedDemoDatabaseIfNeeded(): Promise<boolean> {
 
   // Step 2: Check if version is already applied (with database verification)
   if (await isVersionAlreadyApplied(demoSeed.version)) {
+    console.log(
+      `Demo seed version ${demoSeed.version} already applied and verified, skipping seeding`
+    );
     return false;
   }
 
