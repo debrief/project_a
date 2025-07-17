@@ -43,10 +43,15 @@
    - Implement proper styling for comment entries (consistent spacing, typography)
    - Handle empty state when no comments exist
 
-5. **Implement sidebar state persistence (visibility)**
-   - Use localStorage to remember sidebar open/closed state
-   - Restore sidebar state on page load/reload
-   - Key should be namespaced to avoid conflicts with other applications
+5. **Implement sidebar state persistence and restoration**
+   - Use localStorage key `backchannel-sidebar-visible` to track sidebar visibility state
+   - Save state when user manually opens/closes the sidebar
+   - Restore sidebar visibility when navigating to any page within the same feedback package (same document root URL)
+   - Restoration should occur after UI components are fully loaded and sidebar element exists in DOM
+   - If localStorage shows sidebar was visible, restore to visible and automatically load/show comments for the current page
+   - Keep localStorage value unchanged during restoration process (don't modify during restore)
+   - If restoration fails (e.g., sidebar element not found, comments can't load), log error to console but don't show sidebar
+   - No visual indication to user that sidebar was auto-restored - make it appear seamless
    - Handle edge cases like localStorage being unavailable
 
 6. **Update e2e tests to verify sidebar functionality**
@@ -54,7 +59,11 @@
    - Test that "Capture Feedback" button properly initiates capture mode
    - Test that "Cancel selection" button properly exits capture mode
    - Verify seeded database comments are displayed in the sidebar
-   - Test sidebar state persistence across page reloads and navigation to a new page under the same document (recommend use of `tests/e2e/fixtures/enabled-test/enabled` for this).
+   - Test sidebar state persistence and automatic restoration across page reloads and navigation within the same feedback package
+   - Verify restoration only occurs within same feedback package (same document root URL)
+   - Test that restoration happens after UI components are loaded
+   - Test that comments for current page are automatically loaded during restoration
+   - Test error handling when restoration fails (recommend use of `tests/e2e/fixtures/enabled-test/enabled` for multi-page testing)
 
 **Integration Requirements:**
 - Connect to existing storage service to retrieve comments for current page
@@ -76,7 +85,9 @@
 - Toolbar with "Capture Feedback" and "Export" buttons is functional
 - Capture mode properly hides sidebar and shows cancel button
 - Comment list displays seeded database comments for current page
-- Sidebar state persists across page reloads
+- Sidebar state persists and automatically restores when navigating within the same feedback package
+- Restoration is seamless with no visual indication to the user
+- Comments for current page are automatically loaded during restoration
 - All e2e tests pass and verify the described functionality
 
 **Specify Deliverables:**
@@ -84,7 +95,7 @@
 2. Toolbar implementation with capture and export buttons
 3. Capture mode interaction handling with cancel functionality
 4. Comment list display with proper formatting
-5. localStorage integration for state persistence
+5. localStorage integration for state persistence and automatic restoration across pages in same feedback package
 6. Updated e2e tests that verify all sidebar functionality
 7. Console logging of element details during capture mode
 
