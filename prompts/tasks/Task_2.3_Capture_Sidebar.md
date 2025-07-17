@@ -23,6 +23,10 @@ You are activated as an Implementation Agent within the Agentic Project Manageme
    - Persist sidebar visibility across page reloads and navigation
    - Restore sidebar state seamlessly after page load
    - Ensure state changes are immediately reflected in localStorage
+   - **State Restoration Logic**:
+     - If `backchannel-sidebar-visible` = `true`: Show sidebar, hide BC icon (Capture mode)
+     - If `backchannel-sidebar-visible` = `false` or unset: Hide sidebar, show blue BC icon (Active mode)
+     - Only applies when feedback package exists for current page
 
 3. **Implement "Capture Feedback" and "Export" buttons in toolbar at top of panel**
    - Create a toolbar section at the top of the sidebar
@@ -53,6 +57,16 @@ You are activated as an Implementation Agent within the Agentic Project Manageme
 - Sidebar contains close button ("X") at top-right
 - Sidebar visibility state must persist using `backchannel-sidebar-visible` localStorage key
 
+**State Initialization Logic (from UI-states.md):**
+- **No feedback package exists**: Grey icon (Inactive), no sidebar created
+- **Feedback package exists + `backchannel-sidebar-visible` = `false`**: Blue icon (Active), sidebar hidden
+- **Feedback package exists + `backchannel-sidebar-visible` = `true`**: Icon hidden (Capture), sidebar visible
+
+**State Transitions:**
+- **Grey → Blue**: Package creation completed
+- **Blue → Hidden**: User clicks blue icon to show sidebar (Active → Capture)
+- **Hidden → Blue**: User closes sidebar (Capture → Active)
+
 **Integration Requirements:**
 - Connect with existing storage service to retrieve comments for current page
 - Integrate with BC icon state management system
@@ -67,6 +81,10 @@ You are activated as an Implementation Agent within the Agentic Project Manageme
 - Comment list displays seeded database comments correctly
 - Sidebar state persistence works across page navigation
 - Element selection flow works as specified (sidebar hides, selection occurs, sidebar returns)
+- **State Management Integration**:
+  - Sidebar visibility correctly drives BC icon visibility (visible sidebar = hidden icon)
+  - State transitions work correctly: Active (blue icon, sidebar hidden) ↔ Capture (icon hidden, sidebar visible)
+  - localStorage persistence maintains state across page reloads within feedback package
 
 **Specify Deliverables:**
 - Modified/created files for sidebar implementation
@@ -80,6 +98,11 @@ You are activated as an Implementation Agent within the Agentic Project Manageme
 - Tests should confirm seeded database comments are displayed in sidebar
 - Verify state persistence across page reloads
 - Test capture feedback button interaction flow
+- **State Management Tests**:
+  - Verify correct initial state based on `backchannel-sidebar-visible` localStorage value
+  - Test BC icon visibility changes when sidebar is shown/hidden
+  - Confirm state transitions: Active → Capture → Active work correctly
+  - Validate localStorage persistence across page navigation within feedback package
 
 ## 4. Memory Bank Logging Instructions
 
