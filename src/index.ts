@@ -10,6 +10,20 @@ import { seedDemoDatabaseIfNeeded } from './utils/seedDemoDatabase';
 import { BackChannelIcon } from './components/BackChannelIcon';
 import { BackChannelSidebar } from './components/BackChannelSidebar';
 
+declare global {
+  interface Window {
+    BackChannel: {
+      init: (config?: PluginConfig) => Promise<void>;
+      getState: () => FeedbackState;
+      getConfig: () => PluginConfig;
+      enableBackChannel: () => Promise<void>;
+      getDatabaseService: () => Promise<DatabaseService>;
+      isEnabled: boolean;
+    };
+    BackChannelIcon: typeof BackChannelIcon;
+    BackChannelSidebar: typeof BackChannelSidebar;
+  }
+}
 // Force the custom element to be registered
 if (typeof window !== 'undefined') {
   // Simply referencing the class ensures it's not tree-shaken
@@ -532,20 +546,6 @@ class BackChannelPlugin implements IBackChannelPlugin {
 }
 
 const backChannelInstance = new BackChannelPlugin();
-
-declare global {
-  interface Window {
-    BackChannel: {
-      init: (config?: PluginConfig) => Promise<void>;
-      getState: () => FeedbackState;
-      getConfig: () => PluginConfig;
-      enableBackChannel: () => Promise<void>;
-      getDatabaseService: () => Promise<DatabaseService>;
-      isEnabled: boolean;
-    };
-    BackChannelIcon: typeof BackChannelIcon;
-  }
-}
 
 if (typeof window !== 'undefined') {
   window.BackChannel = {
