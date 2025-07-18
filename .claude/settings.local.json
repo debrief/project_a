@@ -28,6 +28,26 @@
       "Bash(python3:*)",
       "Bash(grep:*)"
     ],
-    "deny": []
+    "deny": [],
+    "hooks": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "yarn format"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [[ \"$CLAUDE_FILE_PATHS\" =~ \\. (ts|tsx)$ ]]; then npx tsc --noEmit --skipLibCheck \"$CLAUDE_FILE_PATHS\" || echo '⚠️ TypeScript errors detected - please review'; fi"
+          }
+        ]
+      }
+    ]
   }
 }

@@ -115,21 +115,23 @@ class BackChannelPlugin implements IBackChannelPlugin {
 
   /**
    * Clear BackChannel-related localStorage entries
-   * Called when no feedback package exists for the current page
+   * Only clears cache when we're certain no valid package exists for current URL
    */
   private clearBackChannelLocalStorage(): void {
     try {
-      const keysToRemove = [
-        'backchannel-db-id',
-        'backchannel-url-root',
-        'backchannel-enabled-state',
-        'backchannel-last-url-check',
-        'backchannel-seed-version',
-      ];
+      // Only clear cache that's specific to the current URL
+      const currentUrl = window.location.href;
+      const lastUrlCheck = localStorage.getItem('backchannel-last-url-check');
 
-      for (const key of keysToRemove) {
-        localStorage.removeItem(key);
+      // Only clear cache if the last URL check was for the current URL
+      // This prevents clearing cache that might be valid for other documents
+      if (lastUrlCheck === currentUrl) {
+        localStorage.removeItem('backchannel-enabled-state');
+        localStorage.removeItem('backchannel-last-url-check');
       }
+
+      // Note: We don't clear 'backchannel-db-id', 'backchannel-url-root', or
+      // 'backchannel-seed-version' as these might be valid for other documents
     } catch (error) {
       console.warn('Failed to clear BackChannel localStorage:', error);
     }
@@ -164,20 +166,39 @@ class BackChannelPlugin implements IBackChannelPlugin {
   }
 
   private async onDOMReady(): Promise<void> {
-    // Check if BackChannel should be enabled for this page using static method
-    // This doesn't create a database connection unless there's an existing feedback package
+    // Check if BackChannel should be enabled for this page
+    // First check cache, then check for existing packages if needed
     try {
-      const hasExistingPackage =
-        await DatabaseService.hasExistingFeedbackPackage();
+      const currentUrl = window.location.href;
 
-      if (hasExistingPackage) {
-        // Only create database service if there's an existing package
-        const db = await this.getDatabaseService();
-        this.isEnabled = await db.isBackChannelEnabled();
+      // Fast path: check localStorage cache first
+      const cachedEnabledState = localStorage.getItem(
+        'backchannel-enabled-state'
+      );
+      const lastUrlCheck = localStorage.getItem('backchannel-last-url-check');
+
+      if (cachedEnabledState !== null && lastUrlCheck === currentUrl) {
+        // Cache hit - trust the cached result
+        this.isEnabled = cachedEnabledState === 'true';
+
+        // If enabled, we still need to create the database service
+        if (this.isEnabled) {
+          await this.getDatabaseService();
+        }
       } else {
-        // No existing package, remain disabled and clear any localStorage
-        this.isEnabled = false;
-        this.clearBackChannelLocalStorage();
+        // Cache miss or different URL - check for existing packages
+        const hasExistingPackage =
+          await DatabaseService.hasExistingFeedbackPackage();
+
+        if (hasExistingPackage) {
+          // Only create database service if there's an existing package
+          const db = await this.getDatabaseService();
+          this.isEnabled = await db.isBackChannelEnabled();
+        } else {
+          // No existing package, remain disabled and clear cache only if necessary
+          this.isEnabled = false;
+          this.clearBackChannelLocalStorage();
+        }
       }
     } catch (error) {
       console.error('Failed to check if BackChannel should be enabled:', error);
