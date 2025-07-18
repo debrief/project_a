@@ -211,3 +211,27 @@ export interface IBackChannelPlugin {
 export interface BackChannelIconAPI {
   setClickHandler(handler: () => void): void
 }
+
+/**
+ * Element information structure for DOM element capture
+ */
+export interface ElementInfo {
+  /** HTML tag name in lowercase */
+  tagName: string
+  /** XPath selector for the element */
+  xpath: string
+  /** CSS selector for the element */
+  cssSelector: string
+  /** Text content of the element */
+  textContent: string
+  /** Element attributes as key-value pairs */
+  attributes: Record<string, string>
+  /** Element's bounding rectangle */
+  boundingRect: DOMRect
+  /** Index of the element among its siblings */
+  elementIndex: number
+  /** Parent element information */
+  parentInfo: string
+  /** Allow additional properties */
+  [key: string]: unknown
+}

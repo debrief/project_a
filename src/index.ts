@@ -5,6 +5,7 @@ import {
   IBackChannelPlugin,
   BackChannelIconAPI,
   CaptureComment,
+  ElementInfo,
 } from './types'
 import { DatabaseService } from './services/DatabaseService'
 import { seedDemoDatabaseIfNeeded } from './utils/seedDemoDatabase'
@@ -292,8 +293,8 @@ class BackChannelPlugin implements IBackChannelPlugin {
           this.handleExportComments()
         })
 
-        this.sidebar.addEventListener('comment-added', (event: CustomEvent) => {
-          this.handleCommentAdded(event.detail)
+        this.sidebar.addEventListener('comment-added', (event: Event) => {
+          this.handleCommentAdded((event as CustomEvent).detail)
         })
 
         // Add to DOM
@@ -476,7 +477,7 @@ class BackChannelPlugin implements IBackChannelPlugin {
 
   private handleCommentAdded(detail: {
     comment: CaptureComment
-    element: ReturnType<typeof this.getElementInfo>
+    element: ElementInfo
   }): void {
     // Add visual feedback to the commented element
     this.addElementVisualFeedback(detail.comment, detail.element)
@@ -816,7 +817,7 @@ class BackChannelPlugin implements IBackChannelPlugin {
 
   private findBestElementToHighlight(target: HTMLElement): HTMLElement {
     // Start with the target element
-    let current = target
+    let current: HTMLElement | null = target
 
     // If target is a text node or inline element, try to find a better parent
     const inlineElements = [
@@ -875,7 +876,7 @@ class BackChannelPlugin implements IBackChannelPlugin {
     while (current && current !== document.body) {
       // Skip if this element should be ignored
       if (this.shouldIgnoreElement(current)) {
-        current = current.parentElement!
+        current = current.parentElement
         continue
       }
 
@@ -899,7 +900,7 @@ class BackChannelPlugin implements IBackChannelPlugin {
       }
 
       // Move to parent
-      current = current.parentElement!
+      current = current.parentElement
     }
 
     // Fall back to original target if no better element found
@@ -965,16 +966,7 @@ class BackChannelPlugin implements IBackChannelPlugin {
     }
   }
 
-  private getElementInfo(element: HTMLElement): {
-    tagName: string
-    xpath: string
-    cssSelector: string
-    textContent: string
-    attributes: Record<string, string>
-    boundingRect: DOMRect
-    elementIndex: number
-    parentInfo: string
-  } {
+  private getElementInfo(element: HTMLElement): ElementInfo {
     return {
       tagName: element.tagName.toLowerCase(),
       xpath: this.getXPath(element),
