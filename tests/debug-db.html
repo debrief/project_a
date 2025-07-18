@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Database Debug Tool</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        button { margin: 5px; padding: 10px 15px; cursor: pointer; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Database Debug Tool</h1>
+    
+    <div class="section">
+        <h2>Database Information</h2>
+        <button onclick="listDatabases()">List All Databases</button>
+        <button onclick="checkDatabaseStatus()">Check Database Status</button>
+        <div id="db-info"></div>
+    </div>
+
+    <div class="section">
+        <h2>Database Operations</h2>
+        <button onclick="forceDatabaseDeletion()">Force Delete Database</button>
+        <button onclick="clearLocalStorage()">Clear localStorage</button>
+        <button onclick="inspectDatabase()">Inspect Database Contents</button>
+        <div id="db-operations"></div>
+    </div>
+
+    <div class="section">
+        <h2>Seeding Operations</h2>
+        <button onclick="setupDemoData()">Setup Demo Data</button>
+        <button onclick="testSeeding()">Test Seeding Process</button>
+        <div id="seeding-info"></div>
+    </div>
+
+    <div class="section">
+        <h2>Console Output</h2>
+        <div id="console-output"></div>
+    </div>
+
+    <script>
+        const output = document.getElementById('console-output');
+        const dbInfo = document.getElementById('db-info');
+        const dbOperations = document.getElementById('db-operations');
+        const seedingInfo = document.getElementById('seeding-info');
+
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = new Date().toLocaleTimeString() + ': ' + message;
+            output.appendChild(div);
+            output.scrollTop = output.scrollHeight;
+            console.log(message);
+        }
+
+        function logPre(content, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            const pre = document.createElement('pre');
+            pre.textContent = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
+            div.appendChild(pre);
+            output.appendChild(div);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        async function listDatabases() {
+            try {
+                log('Listing databases...');
+                
+                // Check what's in DevTools
+                const dbNames = ['BackChannelDB', 'BackChannelDB-Demo', 'BackChannelDB-EnabledTest'];
+                
+                for (const dbName of dbNames) {
+                    try {
+                        const openReq = indexedDB.open(dbName);
+                        openReq.onsuccess = (event) => {
+                            const db = event.target.result;
+                            log(`Database ${dbName} exists, version: ${db.version}`);
+                            log(`Object stores: ${Array.from(db.objectStoreNames).join(', ')}`);
+                            db.close();
+                        };
+                        openReq.onerror = () => {
+                            log(`Database ${dbName} does not exist or cannot be opened`);
+                        };
+                    } catch (error) {
+                        log(`Error checking ${dbName}: ${error.message}`, 'error');
+                    }
+                }
+            } catch (error) {
+                log(`Error listing databases: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkDatabaseStatus() {
+            try {
+                log('Checking database status...');
+                
+                // Check localStorage
+                const keys = [
+                    'backchannel-db-id',
+                    'backchannel-url-root', 
+                    'backchannel-enabled-state',
+                    'backchannel-last-url-check',
+                    'backchannel-seed-version'
+                ];
+                
+                const storage = {};
+                keys.forEach(key => {
+                    storage[key] = localStorage.getItem(key);
+                });
+                
+                logPre(storage);
+                
+                // Check window objects
+                const windowData = {
+                    demoDatabaseSeed: !!window.demoDatabaseSeed,
+                    fakeData: !!window.fakeData,
+                    BackChannel: !!window.BackChannel
+                };
+                
+                logPre(windowData);
+                
+            } catch (error) {
+                log(`Error checking status: ${error.message}`, 'error');
+            }
+        }
+
+        async function forceDatabaseDeletion() {
+            const dbName = 'BackChannelDB-Demo';
+            log(`Attempting to delete database: ${dbName}`);
+            
+            try {
+                // First, close any active BackChannel connections
+                if (window.BackChannel && window.BackChannel.databaseService) {
+                    log('Closing active BackChannel database connection...');
+                    window.BackChannel.databaseService.close();
+                }
+                
+                // Also try to close any other potential connections
+                log('Attempting database deletion...');
+                
+                const deleteReq = indexedDB.deleteDatabase(dbName);
+                
+                deleteReq.onsuccess = () => {
+                    log(`Database ${dbName} deleted successfully!`, 'success');
+                };
+                
+                deleteReq.onerror = (event) => {
+                    log(`Database deletion failed: ${event.target.error}`, 'error');
+                };
+                
+                deleteReq.onblocked = () => {
+                    log(`Database deletion blocked! This means:`, 'error');
+                    log('1. Another tab/window has the database open', 'error');
+                    log('2. There may still be active connections', 'error');
+                    log('3. Try refreshing this page and try again', 'error');
+                    
+                    // Add timeout to resolve anyway
+                    setTimeout(() => {
+                        log('Continuing after 3 second timeout...', 'info');
+                    }, 3000);
+                };
+                
+                // Add timeout
+                setTimeout(() => {
+                    log('Delete operation timed out after 8 seconds', 'error');
+                }, 8000);
+                
+            } catch (error) {
+                log(`Error during deletion: ${error.message}`, 'error');
+            }
+        }
+
+        async function clearLocalStorage() {
+            try {
+                const before = localStorage.length;
+                localStorage.clear();
+                log(`Cleared localStorage (${before} items removed)`, 'success');
+            } catch (error) {
+                log(`Error clearing localStorage: ${error.message}`, 'error');
+            }
+        }
+
+        async function inspectDatabase() {
+            const dbName = 'BackChannelDB-Demo';
+            log(`Inspecting database: ${dbName}`);
+            
+            try {
+                const openReq = indexedDB.open(dbName);
+                
+                openReq.onsuccess = (event) => {
+                    const db = event.target.result;
+                    log(`Database opened successfully, version: ${db.version}`);
+                    
+                    // Check metadata store
+                    const transaction = db.transaction(['metadata', 'comments'], 'readonly');
+                    
+                    const metadataStore = transaction.objectStore('metadata');
+                    const metadataReq = metadataStore.getAll();
+                    
+                    metadataReq.onsuccess = () => {
+                        log('Metadata store contents:');
+                        logPre(metadataReq.result);
+                    };
+                    
+                    const commentsStore = transaction.objectStore('comments');
+                    const commentsReq = commentsStore.getAll();
+                    
+                    commentsReq.onsuccess = () => {
+                        log('Comments store contents:');
+                        logPre(commentsReq.result);
+                    };
+                    
+                    db.close();
+                };
+                
+                openReq.onerror = () => {
+                    log(`Cannot open database ${dbName}`, 'error');
+                };
+                
+            } catch (error) {
+                log(`Error inspecting database: ${error.message}`, 'error');
+            }
+        }
+
+        async function setupDemoData() {
+            log('Setting up demo data...');
+            
+            // Setup demo seed data
+            window.demoDatabaseSeed = {
+                version: 'demo-debug',
+                metadata: {
+                    documentTitle: 'Debug Test Document',
+                    documentRootUrl: 'http://localhost:3001/',
+                    documentId: 'debug-001',
+                    reviewer: 'Debug User'
+                },
+                comments: [
+                    {
+                        id: 'debug-comment-001',
+                        text: 'This is a debug comment',
+                        pageUrl: window.location.href,
+                        timestamp: new Date().toISOString(),
+                        location: '/html/body/h1',
+                        snippet: 'Database Debug Tool',
+                        author: 'Debug User'
+                    }
+                ]
+            };
+
+            // Setup fake data
+            window.fakeData = {
+                version: 1,
+                databases: [
+                    {
+                        name: 'BackChannelDB-Demo',
+                        version: 1,
+                        objectStores: [
+                            {
+                                name: 'metadata',
+                                keyPath: 'documentRootUrl',
+                                data: [window.demoDatabaseSeed.metadata]
+                            },
+                            {
+                                name: 'comments',
+                                keyPath: 'id',
+                                data: window.demoDatabaseSeed.comments
+                            }
+                        ]
+                    }
+                ]
+            };
+            
+            log('Demo data setup complete', 'success');
+        }
+
+        async function testSeeding() {
+            log('Testing seeding process...');
+            
+            try {
+                // Import the seeding module
+                const seedModule = await import('/src/utils/seedDemoDatabase.ts');
+                
+                // Clear version to force reseed
+                seedModule.clearSeedVersion();
+                
+                // Test seeding
+                const result = await seedModule.seedDemoDatabaseIfNeeded();
+                
+                log(`Seeding result: ${result}`, result ? 'success' : 'error');
+                
+                if (!result) {
+                    log('Check if window.demoDatabaseSeed is available:', 'info');
+                    log(`demoDatabaseSeed exists: ${!!window.demoDatabaseSeed}`, 'info');
+                    if (window.demoDatabaseSeed) {
+                        log(`Version: ${window.demoDatabaseSeed.version}`, 'info');
+                    }
+                }
+                
+            } catch (error) {
+                log(`Seeding test failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            log('Database debug tool loaded');
+            log('Click buttons above to debug database issues');
+        });
+    </script>
+</body>
+</html>

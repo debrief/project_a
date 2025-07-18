@@ -10,7 +10,7 @@ The project uses the **Agentic Project Management (APM)** framework, which coord
 
 ## Key Technologies & Build System
 
-- **Language**: TypeScript compiled to ES6 JavaScript
+- **Language**: TypeScript compiled to ES6 JavaScript. Note: Typescript code should not use `any` type.
 - **Build System**: Vite (for development) and Vite bundler (for plugin output)
 - **Package Manager**: yarn
 - **Testing**: Vitest for unit tests, Playwright for integration/E2E tests
@@ -107,6 +107,11 @@ The plugin exports feedback in a structured CSV format with:
 - **Caching Layer**: localStorage for performance optimization
 - **Namespacing**: Storage keys based on document/manual configuration
 - **CRUD Operations**: Full create, read, update, delete operations for comments and feedback packages
+
+### Database Creation Policy
+- **Requirement**: IndexedDB databases and localStorage data should not be created until there is an active feedback package session
+- This prevents unnecessary storage operations on pages without feedback functionality
+- Database creation should only occur when a feedback package is created or when existing a seed database is detected
 
 ## Development Workflow
 

@@ -8,11 +8,12 @@ This document defines the BDD test cases for the Capture Mode of BackChannel, in
 
 ### Scenario: Create a new feedback package
 Given the user is on the welcome or introduction page  
-When the user clicks “Create Feedback Package”  
-Then a dialog appears showing the current folder-based URL stem  
+When the user clicks "Create Feedback Package"  
+Then a dialog appears showing the parent folder of the current document as the default URL prefix  
 And a default document name from the page `<title>`  
 And the user can confirm or edit the name and URL prefix  
-And the system stores this package info in IndexedDB
+And the system stores this package info in IndexedDB  
+And the URL prefix will match all documents "beneath" the current document in the folder tree
 
 ### Scenario: Feedback package already exists
 Given the current page URL matches an existing feedback package prefix  

@@ -50,11 +50,11 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
 - **Action Steps**:
   1. Implement IndexedDB initialization and connection management
   2. Create CRUD operations for feedback packages and comments
-  3. Implement localStorage caching for performance
-  4. Create utility that seeds JSON data into IndexedDB for testing, according to `docs/project/pre-populate-database.md`
-  5. Add error handling and fallbacks
-  6. Constructor should take optional fakeIndexedDb parameter.  In unit testing a fake indexedDb is provided, removing need to mock browser implementation. When provided, the fakeIndexedDb is used instead of browser IndexedDb
-  - **Guiding Notes**: Use IndexedDB for primary storage, localStorage for caching, implement version checking
+  3. Implement localStorage caching of database id and document URL root, to quickly determine if a newly loaded page already has a feedback page.
+  4. Create utility that seeds JSON data into IndexedDB for later UI testing, according to `docs/project/pre-populate-database.md`
+  5. Constructor should take optional fakeIndexedDb parameter.  In unit testing a fake indexedDb is provided, removing need to mock browser implementation. When provided, the fakeIndexedDb is used instead of browser IndexedDb
+  6. Add error handling and fallbacks. Use the fake indexedDb for unit testing of the storage service.  Use console logging of database access outcomes to verify seeding of browser database in playwright e2e testing.
+  - **Guiding Notes**: Use IndexedDB for primary storage, localStorage for caching of database id and document URL root, implement version checking
 
 ### Phase 2: Capture Mode - Core Functionality (Agent: UI Developer)
 
@@ -89,10 +89,10 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
 - **Assigned to**: UI Developer
 - **Action Steps**:
   1. Create sidebar UI with toggle functionality
-  2. Implement "Capture Feedback" and "Export" buttons
-  3. On "Capture Feedback", sidebar hidden, allowing reviewer to select element of content. Once clicked, sidebar returns.  A `Cancel selection` button is shown to top-right.
-  3. Add comment list display in sidebar
-  4. Implement sidebar state persistence
+  2. Implement "Capture Feedback" and "Export" buttons in toolbar at top of panel.
+  3. On "Capture Feedback", sidebar hidden, allowing reviewer to select element of content. Once clicked, write element details to console, and sidebar returns.  A `Cancel selection` button is shown to top-right.
+  3. Add list of comments in sidebar
+  4. Implement sidebar state persistence (visibility)
   5. Update e2e tests to verify sidebar functionality, and that seeded database comments are displayed
   - **Guiding Notes**: Sidebar should be collapsible, use CSS transitions for smooth animations, persist state in localStorage
 
@@ -114,7 +114,8 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
   2. Add validation and submission handling
   3. Connect to storage service for saving comments
   4. Implement comment badges on elements
-  - **Guiding Notes**: Form should be compact but usable, provide clear feedback on submission, badges should be visible but not intrusive
+  5. Add subtle background shading to elements with comments
+  - **Guiding Notes**: Form should be compact but usable, provide clear feedback on submission, badges should be visible but not intrusive, background shading should be subtle and not interfere with content readability
 
 ### Phase 3: Persistence & Navigation (Agent: Backend Developer)
 
@@ -126,7 +127,7 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
 - **Action Steps**:
   1. Enhance storage service to handle page reload scenarios
   2. Implement loading of existing comments on page load
-  3. Add comment badge restoration
+  3. Add comment badge and background shading restoration
   4. Optimize IndexedDB operations for performance
   - **Guiding Notes**: Use efficient querying patterns, implement caching where appropriate, handle edge cases like deleted elements
 

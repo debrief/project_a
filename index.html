@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BackChannel Plugin - Welcome</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #007acc;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #555;
+            margin-top: 30px;
+        }
+        .reviewable {
+            background-color: #f8f9fa;
+            border-left: 4px solid #007acc;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .demo-section {
+            background-color: #e8f4f8;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        .button {
+            background-color: #007acc;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        .button:hover {
+            background-color: #005fa3;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        code {
+            background-color: #f1f1f1;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to BackChannel</h1>
+        <p>BackChannel is a lightweight, offline-first JavaScript plugin for capturing and reviewing feedback within static HTML content.</p>
+        
+        <h2>Getting Started</h2>
+        <div class="demo-section">
+            <p>The BackChannel plugin initializes automatically when the page loads. No manual initialization required!</p>
+            <div id="status" class="status">
+                Plugin auto-initialized successfully!
+            </div>
+            <button class="button" onclick="reinitializePlugin()">Reinitialize with Custom Config</button>
+        </div>
+
+        <h2>Test Fixtures</h2>
+        <div class="demo-section">
+            <p>Test the enabled/disabled detection logic with these fixtures:</p>
+            <a href="tests/e2e/fixtures/enabled-test/index.html" class="button">Enabled/Disabled Test Fixture</a>
+            <a href="tests/debug-db.html" class="button">Database Debug Tool</a>
+            <p><small>The test fixture demonstrates how BackChannel determines whether to enable or disable based on existing feedback packages. The debug tool helps diagnose database issues without UI dependencies.</small></p>
+        </div>
+
+        <h2>Sample Content for Testing</h2>
+        <p>The content below has the <code>reviewable</code> class applied, making it available for feedback capture:</p>
+        
+        <div class="reviewable">
+            <h3>Sample Document Section</h3>
+            <p>This is a sample paragraph that can be selected for feedback. In a real-world scenario, document reviewers would click on elements like this to add comments and suggestions.</p>
+        </div>
+
+        <div class="reviewable">
+            <h3>Another Reviewable Section</h3>
+            <p>Here's another section that supports feedback capture. The BackChannel plugin allows users to:</p>
+            <ul>
+                <li>Select specific content elements</li>
+                <li>Add detailed comments and feedback</li>
+                <li>Export feedback packages as CSV files</li>
+                <li>Work completely offline</li>
+            </ul>
+        </div>
+
+        <div class="reviewable">
+            <h3>Technical Features</h3>
+            <p>BackChannel is designed specifically for air-gapped environments and includes:</p>
+            <ul>
+                <li><strong>Offline Operation:</strong> No network connectivity required</li>
+                <li><strong>Local Storage:</strong> Uses IndexedDB for persistent data storage</li>
+                <li><strong>CSV Export:</strong> Human-readable feedback packages</li>
+                <li><strong>Cross-Page Support:</strong> Maintains context across multiple pages</li>
+            </ul>
+        </div>
+
+        <h2>Plugin Status</h2>
+        <p>Current plugin state: <span id="plugin-state">Not initialized</span></p>
+        <p>Configuration: <span id="plugin-config">None</span></p>
+        
+        <h2>Usage Instructions</h2>
+        <div class="demo-section">
+            <p>For document authors:</p>
+            <ol>
+                <li>Simply add <code>&lt;script src="backchannel.js"&gt;&lt;/script&gt;</code> to your HTML</li>
+                <li>The plugin auto-initializes when the page loads</li>
+                <li>No additional configuration required</li>
+                <li>Users can then select reviewable content and provide feedback</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        // Demo database seed data
+        window.demoDatabaseSeed = {
+            version: 'demo-v1',
+            metadata: {
+                documentTitle: 'BackChannel Demo Document',
+                documentRootUrl: 'file://',
+                documentId: 'demo-001',
+                reviewer: 'Demo User'
+            },
+            comments: [
+                {
+                    id: 'demo-comment-001',
+                    text: 'This is a sample comment for the welcome section.',
+                    pageUrl: window.location.href,
+                    timestamp: new Date().toISOString(),
+                    location: '/html/body/div[1]/h1',
+                    snippet: 'Welcome to BackChannel',
+                    author: 'Demo User'
+                },
+                {
+                    id: 'demo-comment-002',
+                    text: 'Another demo comment showing multi-comment support.',
+                    pageUrl: window.location.href,
+                    timestamp: new Date().toISOString(),
+                    location: '/html/body/div[1]/div[1]/h3',
+                    snippet: 'Sample Document Section',
+                    author: 'Demo User'
+                }
+            ]
+        };
+
+        // Fake database configuration for seeding
+        window.fakeData = {
+            version: 1,
+            databases: [
+                {
+                    name: 'BackChannelDB-Demo',
+                    version: 1,
+                    objectStores: [
+                        {
+                            name: 'metadata',
+                            keyPath: 'documentRootUrl',
+                            data: [window.demoDatabaseSeed.metadata]
+                        },
+                        {
+                            name: 'comments',
+                            keyPath: 'id',
+                            data: window.demoDatabaseSeed.comments
+                        }
+                    ]
+                }
+            ]
+        };
+    </script>
+    <script type="module" src="src/index.ts"></script>
+    <script>
+        // Optional: Demo function to show reinitialization capability
+        async function reinitializePlugin() {
+            try {
+                await window.BackChannel.init({
+                    requireInitials: true,
+                    storageKey: 'backchannel-demo-custom',
+                    targetSelector: '.reviewable',
+                    allowExport: true
+                });
+                
+                updatePluginInfo();
+                alert('Plugin reinitialized with custom configuration!');
+            } catch (error) {
+                console.error('Failed to reinitialize plugin:', error);
+                alert('Failed to reinitialize plugin. Check console for details.');
+            }
+        }
+
+        // Display current plugin state and configuration
+        function updatePluginInfo() {
+            const state = window.BackChannel.getState();
+            const config = window.BackChannel.getConfig();
+            
+            document.getElementById('plugin-state').textContent = state;
+            document.getElementById('plugin-config').textContent = JSON.stringify(config, null, 2);
+        }
+
+        // Update display after auto-initialization
+        window.addEventListener('load', () => {
+            setTimeout(updatePluginInfo, 100);
+        });
+    </script>
+</body>
+</html>

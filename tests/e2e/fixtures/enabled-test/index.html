@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>BackChannel Enabled Test - Root</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1 {
+      color: #333;
+    }
+    .navigation {
+      margin: 20px 0;
+      padding: 10px;
+      background-color: #f5f5f5;
+      border-radius: 5px;
+    }
+    .navigation a {
+      margin-right: 15px;
+      color: #0066cc;
+      text-decoration: none;
+    }
+    .navigation a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <h1>BackChannel Enabled Test - Root</h1>
+  
+  <div class="navigation">
+    <a href="enabled/index.html">Enabled Section</a>
+    <a href="disabled/index.html">Disabled Section</a>
+  </div>
+  
+  <p>This is the root page for testing BackChannel enabled/disabled state detection.</p>
+  <p>The test will create a feedback package at the root of the "enabled" section, which should make all pages under that path enabled for BackChannel.</p>
+
+  <h2>The Importance of Constructive Feedback</h2>
+  <p>In any professional setting, constructive feedback is a cornerstone of personal and organizational development. It serves as a powerful tool for reinforcing positive behaviors and identifying areas for improvement. When delivered effectively, feedback fosters a culture of continuous learning, enhances performance, and builds trust among team members.</p>
+  
+  <blockquote>
+    <p>"We all need people who will give us feedback. That's how we improve."</p>
+    <footer>- Bill Gates</footer>
+  </blockquote>
+
+  <p>This test suite is designed to ensure the BackChannel feedback tool works correctly, allowing users to provide and receive feedback seamlessly across different sections of a web application.</p>
+  
+  <!-- Load BackChannel -->
+  <script type="module" src="../../../../src/index.ts"></script>
+</body>
+</html>
