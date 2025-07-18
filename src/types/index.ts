@@ -4,7 +4,7 @@
  * @author BackChannel Team
  */
 
-import type { DatabaseService } from '../services/DatabaseService';
+import type { DatabaseService } from '../services/DatabaseService'
 
 /**
  * Plugin operational states
@@ -37,19 +37,19 @@ export enum CommentState {
  */
 export interface CaptureComment {
   /** Unique identifier, derived from timestamp at creation */
-  id: string;
+  id: string
   /** Comment content */
-  text: string;
+  text: string
   /** Absolute URL of the page on which the comment was made */
-  pageUrl: string;
+  pageUrl: string
   /** ISO timestamp when the comment was created */
-  timestamp: string;
+  timestamp: string
   /** XPath string pointing to the DOM element */
-  location: string;
+  location: string
   /** Optional snippet of text within the target element */
-  snippet?: string;
+  snippet?: string
   /** Optional reviewer initials or short name */
-  author?: string;
+  author?: string
 }
 
 /**
@@ -57,13 +57,13 @@ export interface CaptureComment {
  */
 export interface ReviewComment extends CaptureComment {
   /** Review status */
-  state: CommentState;
+  state: CommentState
   /** Optional notes from the editor */
-  editorNotes?: string;
+  editorNotes?: string
   /** Initials or short name of the editor who handled the comment */
-  reviewedBy?: string;
+  reviewedBy?: string
   /** ISO timestamp when the comment was reviewed */
-  reviewedAt?: string;
+  reviewedAt?: string
 }
 
 /**
@@ -71,13 +71,13 @@ export interface ReviewComment extends CaptureComment {
  */
 export interface DocumentMetadata {
   /** Title of the document */
-  documentTitle: string;
+  documentTitle: string
   /** Shared URL prefix for the document set */
-  documentRootUrl: string;
+  documentRootUrl: string
   /** Optional unique identifier for the document */
-  documentId?: string;
+  documentId?: string
   /** User name of the reviewer */
-  reviewer?: string;
+  reviewer?: string
 }
 
 /**
@@ -85,15 +85,15 @@ export interface DocumentMetadata {
  */
 export interface PluginConfig {
   /** Whether to require user initials for comments (default: false) */
-  requireInitials?: boolean;
+  requireInitials?: boolean
   /** Storage key for the current document (default: generated from URL) */
-  storageKey?: string;
+  storageKey?: string
   /** CSS selector for reviewable elements (default: '.reviewable') */
-  targetSelector?: string;
+  targetSelector?: string
   /** Whether to allow CSV export functionality (default: true) */
-  allowExport?: boolean;
+  allowExport?: boolean
   /** Whether to enable debug mode (default: false) */
-  debugMode?: boolean;
+  debugMode?: boolean
 }
 
 /**
@@ -101,9 +101,9 @@ export interface PluginConfig {
  */
 export interface CSVExportData {
   /** Document metadata */
-  metadata: DocumentMetadata;
+  metadata: DocumentMetadata
   /** Array of comments to export */
-  comments: CaptureComment[];
+  comments: CaptureComment[]
 }
 
 /**
@@ -111,17 +111,17 @@ export interface CSVExportData {
  */
 export interface StorageInterface {
   /** Get document metadata */
-  getMetadata(): Promise<DocumentMetadata | null>;
+  getMetadata(): Promise<DocumentMetadata | null>
   /** Set document metadata */
-  setMetadata(metadata: DocumentMetadata): Promise<void>;
+  setMetadata(metadata: DocumentMetadata): Promise<void>
   /** Get all comments */
-  getComments(): Promise<CaptureComment[]>;
+  getComments(): Promise<CaptureComment[]>
   /** Add a new comment */
-  addComment(comment: CaptureComment): Promise<void>;
+  addComment(comment: CaptureComment): Promise<void>
   /** Update an existing comment */
-  updateComment(id: string, updates: Partial<CaptureComment>): Promise<void>;
+  updateComment(id: string, updates: Partial<CaptureComment>): Promise<void>
   /** Delete a comment */
-  deleteComment(id: string): Promise<void>;
+  deleteComment(id: string): Promise<void>
 }
 
 /**
@@ -136,7 +136,7 @@ export function isCaptureComment(value: unknown): value is CaptureComment {
     typeof (value as Record<string, unknown>).pageUrl === 'string' &&
     typeof (value as Record<string, unknown>).timestamp === 'string' &&
     typeof (value as Record<string, unknown>).location === 'string'
-  );
+  )
 }
 
 /**
@@ -150,27 +150,27 @@ export function isReviewComment(value: unknown): value is ReviewComment {
     Object.values(CommentState).includes(
       (value as unknown as Record<string, unknown>).state as CommentState
     )
-  );
+  )
 }
 
 /**
  * Utility type for creating new comments (without id and timestamp)
  */
-export type NewComment = Omit<CaptureComment, 'id' | 'timestamp'>;
+export type NewComment = Omit<CaptureComment, 'id' | 'timestamp'>
 
 /**
  * Utility type for comment updates
  */
-export type CommentUpdate = Partial<Omit<CaptureComment, 'id'>>;
+export type CommentUpdate = Partial<Omit<CaptureComment, 'id'>>
 
 /**
  * Fake database store structure for testing
  */
 export interface FakeDbStore {
   /** Version of the fake data format */
-  version: number;
+  version: number
   /** Array of fake databases */
-  databases: FakeDatabase[];
+  databases: FakeDatabase[]
 }
 
 /**
@@ -178,11 +178,11 @@ export interface FakeDbStore {
  */
 export interface FakeDatabase {
   /** Database name */
-  name: string;
+  name: string
   /** Database version */
-  version: number;
+  version: number
   /** Array of object stores */
-  objectStores: FakeObjectStore[];
+  objectStores: FakeObjectStore[]
 }
 
 /**
@@ -190,11 +190,11 @@ export interface FakeDatabase {
  */
 export interface FakeObjectStore {
   /** Object store name */
-  name: string;
+  name: string
   /** Key path for the object store */
-  keyPath: string;
+  keyPath: string
   /** Data items in the object store */
-  data: unknown[];
+  data: unknown[]
 }
 
 /**
@@ -202,12 +202,12 @@ export interface FakeObjectStore {
  * Used to avoid circular dependencies.
  */
 export interface IBackChannelPlugin {
-  getDatabaseService(): Promise<DatabaseService>;
+  getDatabaseService(): Promise<DatabaseService>
 }
 
 /**
  * Interface for the BackChannelIcon component's public API.
  */
 export interface BackChannelIconAPI {
-  setClickHandler(handler: () => void): void;
+  setClickHandler(handler: () => void): void
 }

@@ -5,48 +5,48 @@ import {
   IBackChannelPlugin,
   BackChannelIconAPI,
   CaptureComment,
-} from './types';
-import { DatabaseService } from './services/DatabaseService';
-import { seedDemoDatabaseIfNeeded } from './utils/seedDemoDatabase';
-import { BackChannelIcon } from './components/BackChannelIcon';
-import { BackChannelSidebar } from './components/BackChannelSidebar';
+} from './types'
+import { DatabaseService } from './services/DatabaseService'
+import { seedDemoDatabaseIfNeeded } from './utils/seedDemoDatabase'
+import { BackChannelIcon } from './components/BackChannelIcon'
+import { BackChannelSidebar } from './components/BackChannelSidebar'
 
 declare global {
   interface Window {
     BackChannel: {
-      init: (config?: PluginConfig) => Promise<void>;
-      getState: () => FeedbackState;
-      getConfig: () => PluginConfig;
-      enableBackChannel: () => Promise<void>;
-      getDatabaseService: () => Promise<DatabaseService>;
-      isEnabled: boolean;
-    };
-    BackChannelIcon: typeof BackChannelIcon;
-    BackChannelSidebar: typeof BackChannelSidebar;
+      init: (config?: PluginConfig) => Promise<void>
+      getState: () => FeedbackState
+      getConfig: () => PluginConfig
+      enableBackChannel: () => Promise<void>
+      getDatabaseService: () => Promise<DatabaseService>
+      isEnabled: boolean
+    }
+    BackChannelIcon: typeof BackChannelIcon
+    BackChannelSidebar: typeof BackChannelSidebar
   }
 }
 // Force the custom element to be registered
 if (typeof window !== 'undefined') {
   // Simply referencing the class ensures it's not tree-shaken
-  window.BackChannelIcon = BackChannelIcon;
-  window.BackChannelSidebar = BackChannelSidebar;
+  window.BackChannelIcon = BackChannelIcon
+  window.BackChannelSidebar = BackChannelSidebar
 }
 
 class BackChannelPlugin implements IBackChannelPlugin {
-  private config: PluginConfig;
-  private state: FeedbackState;
-  private databaseService: DatabaseService | null = null;
-  private icon: BackChannelIcon | null = null;
-  private sidebar: BackChannelSidebar | null = null;
-  private isEnabled: boolean = false;
-  private isSelectingElement: boolean = false;
-  private selectionCancelButton: HTMLElement | null = null;
-  private currentHighlightedElement: HTMLElement | null = null;
-  private clickTimeout: ReturnType<typeof setTimeout> | null = null;
+  private config: PluginConfig
+  private state: FeedbackState
+  private databaseService: DatabaseService | null = null
+  private icon: BackChannelIcon | null = null
+  private sidebar: BackChannelSidebar | null = null
+  private isEnabled: boolean = false
+  private isSelectingElement: boolean = false
+  private selectionCancelButton: HTMLElement | null = null
+  private currentHighlightedElement: HTMLElement | null = null
+  private clickTimeout: ReturnType<typeof setTimeout> | null = null
 
   constructor() {
-    this.config = this.getDefaultConfig();
-    this.state = FeedbackState.INACTIVE;
+    this.config = this.getDefaultConfig()
+    this.state = FeedbackState.INACTIVE
   }
 
   /**
@@ -54,39 +54,39 @@ class BackChannelPlugin implements IBackChannelPlugin {
    */
   public async getDatabaseService(): Promise<DatabaseService> {
     if (this.databaseService) {
-      return this.databaseService;
+      return this.databaseService
     }
 
-    let dbService: DatabaseService;
+    let dbService: DatabaseService
 
     // Check if fakeData is available with database configuration
     if (typeof window !== 'undefined') {
       const fakeData = (window as unknown as { fakeData?: FakeDbStore })
-        .fakeData;
+        .fakeData
       if (fakeData && fakeData.databases && fakeData.databases.length > 0) {
-        const firstDb = fakeData.databases[0];
+        const firstDb = fakeData.databases[0]
         dbService = new DatabaseService(
           undefined,
           firstDb.name,
           firstDb.version
-        );
+        )
       } else {
         // Use default configuration
-        dbService = new DatabaseService();
+        dbService = new DatabaseService()
       }
     } else {
       // Fallback for non-browser environments
-      dbService = new DatabaseService();
+      dbService = new DatabaseService()
     }
 
     // Seed demo database if needed (BEFORE opening database)
-    await seedDemoDatabaseIfNeeded();
+    await seedDemoDatabaseIfNeeded()
 
     // Initialize the service (this opens the database)
-    await dbService.initialize();
+    await dbService.initialize()
 
-    this.databaseService = dbService;
-    return this.databaseService;
+    this.databaseService = dbService
+    return this.databaseService
   }
 
   /**
@@ -99,7 +99,7 @@ class BackChannelPlugin implements IBackChannelPlugin {
       targetSelector: '.reviewable',
       allowExport: true,
       debugMode: false,
-    };
+    }
   }
 
   /**
@@ -107,10 +107,10 @@ class BackChannelPlugin implements IBackChannelPlugin {
    */
   private generateStorageKey(): string {
     if (typeof window !== 'undefined' && window.location) {
-      const url = new URL(window.location.href);
-      return `backchannel-${url.hostname}${url.pathname}`;
+      const url = new URL(window.location.href)
+      return `backchannel-${url.hostname}${url.pathname}`
     }
-    return 'backchannel-feedback';
+    return 'backchannel-feedback'
   }
 
   /**
@@ -120,20 +120,20 @@ class BackChannelPlugin implements IBackChannelPlugin {
   private clearBackChannelLocalStorage(): void {
     try {
       // Only clear cache that's specific to the current URL
-      const currentUrl = window.location.href;
-      const lastUrlCheck = localStorage.getItem('backchannel-last-url-check');
+      const currentUrl = window.location.href
+      const lastUrlCheck = localStorage.getItem('backchannel-last-url-check')
 
       // Only clear cache if the last URL check was for the current URL
       // This prevents clearing cache that might be valid for other documents
       if (lastUrlCheck === currentUrl) {
-        localStorage.removeItem('backchannel-enabled-state');
-        localStorage.removeItem('backchannel-last-url-check');
+        localStorage.removeItem('backchannel-enabled-state')
+        localStorage.removeItem('backchannel-last-url-check')
       }
 
       // Note: We don't clear 'backchannel-db-id', 'backchannel-url-root', or
       // 'backchannel-seed-version' as these might be valid for other documents
     } catch (error) {
-      console.warn('Failed to clear BackChannel localStorage:', error);
+      console.warn('Failed to clear BackChannel localStorage:', error)
     }
   }
 
@@ -141,13 +141,13 @@ class BackChannelPlugin implements IBackChannelPlugin {
     this.config = {
       ...this.getDefaultConfig(),
       ...config,
-    };
+    }
 
     try {
-      this.setupEventListeners();
+      this.setupEventListeners()
     } catch (error) {
-      console.error('Failed to initialize BackChannel plugin:', error);
-      throw error;
+      console.error('Failed to initialize BackChannel plugin:', error)
+      throw error
     }
   }
 
@@ -155,13 +155,13 @@ class BackChannelPlugin implements IBackChannelPlugin {
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => {
         this.onDOMReady().catch(error => {
-          console.error('Failed to initialize UI after DOM ready:', error);
-        });
-      });
+          console.error('Failed to initialize UI after DOM ready:', error)
+        })
+      })
     } else {
       this.onDOMReady().catch(error => {
-        console.error('Failed to initialize UI:', error);
-      });
+        console.error('Failed to initialize UI:', error)
+      })
     }
   }
 
@@ -169,56 +169,56 @@ class BackChannelPlugin implements IBackChannelPlugin {
     // Check if BackChannel should be enabled for this page
     // First check cache, then check for existing packages if needed
     try {
-      const currentUrl = window.location.href;
+      const currentUrl = window.location.href
 
       // Fast path: check localStorage cache first
       const cachedEnabledState = localStorage.getItem(
         'backchannel-enabled-state'
-      );
-      const lastUrlCheck = localStorage.getItem('backchannel-last-url-check');
+      )
+      const lastUrlCheck = localStorage.getItem('backchannel-last-url-check')
 
       if (cachedEnabledState !== null && lastUrlCheck === currentUrl) {
         // Cache hit - trust the cached result
-        this.isEnabled = cachedEnabledState === 'true';
+        this.isEnabled = cachedEnabledState === 'true'
 
         // If enabled, we still need to create the database service
         if (this.isEnabled) {
-          await this.getDatabaseService();
+          await this.getDatabaseService()
         }
       } else {
         // Cache miss or different URL - check for existing packages
         const hasExistingPackage =
-          await DatabaseService.hasExistingFeedbackPackage();
+          await DatabaseService.hasExistingFeedbackPackage()
 
         if (hasExistingPackage) {
           // Only create database service if there's an existing package
-          const db = await this.getDatabaseService();
-          this.isEnabled = await db.isBackChannelEnabled();
+          const db = await this.getDatabaseService()
+          this.isEnabled = await db.isBackChannelEnabled()
         } else {
           // No existing package, remain disabled and clear cache only if necessary
-          this.isEnabled = false;
-          this.clearBackChannelLocalStorage();
+          this.isEnabled = false
+          this.clearBackChannelLocalStorage()
         }
       }
     } catch (error) {
-      console.error('Failed to check if BackChannel should be enabled:', error);
+      console.error('Failed to check if BackChannel should be enabled:', error)
       // Keep isEnabled as false on error
-      this.isEnabled = false;
+      this.isEnabled = false
     }
 
     // Initialize UI components after DOM is ready
-    await this.initializeUI();
+    await this.initializeUI()
 
     // Load existing comments and apply visual feedback
     if (this.isEnabled) {
-      await this.loadExistingComments();
+      await this.loadExistingComments()
     }
   }
 
   private async initializeUI(): Promise<void> {
     try {
       // Try to create the Lit component
-      const iconElement = document.createElement('backchannel-icon');
+      const iconElement = document.createElement('backchannel-icon')
 
       // Check if it's a proper custom element by checking for connectedCallback
       if (
@@ -226,44 +226,44 @@ class BackChannelPlugin implements IBackChannelPlugin {
           .connectedCallback
       ) {
         // Cast to the proper type
-        this.icon = iconElement as BackChannelIcon;
+        this.icon = iconElement as BackChannelIcon
 
         // Set properties directly
-        this.icon.backChannelPlugin = this;
-        this.icon.state = this.state;
-        this.icon.enabled = this.isEnabled;
+        this.icon.backChannelPlugin = this
+        this.icon.state = this.state
+        this.icon.enabled = this.isEnabled
 
         // Add to DOM
-        document.body.appendChild(this.icon);
+        document.body.appendChild(this.icon)
 
         // Initialize sidebar if enabled
         if (this.isEnabled) {
-          await this.initializeSidebar();
+          await this.initializeSidebar()
         }
 
         // Inject styles for the icon and other components
-        this.injectStyles();
+        this.injectStyles()
 
         // Wait for the component to be ready
-        await this.icon.updateComplete;
+        await this.icon.updateComplete
 
         // Set click handler
-        (this.icon as BackChannelIconAPI).setClickHandler(() =>
+        ;(this.icon as BackChannelIconAPI).setClickHandler(() =>
           this.handleIconClick()
-        );
+        )
       } else {
-        throw new Error('Lit component not properly registered');
+        throw new Error('Lit component not properly registered')
       }
     } catch (error) {
-      console.error('Failed to initialize Lit component:', error);
-      this.initializeFallbackIcon();
+      console.error('Failed to initialize Lit component:', error)
+      this.initializeFallbackIcon()
     }
   }
 
   private async initializeSidebar(): Promise<void> {
     try {
       // Create sidebar element
-      const sidebarElement = document.createElement('backchannel-sidebar');
+      const sidebarElement = document.createElement('backchannel-sidebar')
 
       // Check if it's a proper custom element
       if (
@@ -271,53 +271,53 @@ class BackChannelPlugin implements IBackChannelPlugin {
           .connectedCallback
       ) {
         // Cast to the proper type
-        this.sidebar = sidebarElement as BackChannelSidebar;
+        this.sidebar = sidebarElement as BackChannelSidebar
 
         // Set properties
-        this.sidebar.backChannelPlugin = this;
+        this.sidebar.backChannelPlugin = this
 
         // Let the sidebar component handle its own visibility state restoration
         // This ensures the 'visible' attribute is properly set on the DOM element
 
         // Add event listeners for sidebar events
         this.sidebar.addEventListener('sidebar-closed', () => {
-          this.handleSidebarClosed();
-        });
+          this.handleSidebarClosed()
+        })
 
         this.sidebar.addEventListener('start-capture', () => {
-          this.handleStartCapture();
-        });
+          this.handleStartCapture()
+        })
 
         this.sidebar.addEventListener('export-comments', () => {
-          this.handleExportComments();
-        });
+          this.handleExportComments()
+        })
 
         this.sidebar.addEventListener('comment-added', (event: CustomEvent) => {
-          this.handleCommentAdded(event.detail);
-        });
+          this.handleCommentAdded(event.detail)
+        })
 
         // Add to DOM
-        document.body.appendChild(this.sidebar);
+        document.body.appendChild(this.sidebar)
 
         // Update icon visibility based on sidebar state
-        this.updateIconVisibility();
+        this.updateIconVisibility()
 
         // Wait for the component to be ready
-        await this.sidebar.updateComplete;
+        await this.sidebar.updateComplete
       } else {
-        throw new Error('Sidebar Lit component not properly registered');
+        throw new Error('Sidebar Lit component not properly registered')
       }
     } catch (error) {
-      console.error('Failed to initialize sidebar:', error);
+      console.error('Failed to initialize sidebar:', error)
     }
   }
 
   private initializeFallbackIcon(): void {
     // Create a basic icon element if Lit component fails
-    const icon = document.createElement('div');
-    icon.id = 'backchannel-icon';
-    icon.setAttribute('state', this.state);
-    icon.setAttribute('enabled', this.isEnabled.toString());
+    const icon = document.createElement('div')
+    icon.id = 'backchannel-icon'
+    icon.setAttribute('state', this.state)
+    icon.setAttribute('enabled', this.isEnabled.toString())
     icon.style.cssText = `
       position: fixed;
       top: 20px;
@@ -332,20 +332,20 @@ class BackChannelPlugin implements IBackChannelPlugin {
       justify-content: center;
       cursor: pointer;
       z-index: 10000;
-    `;
-    icon.innerHTML = '💬';
-    icon.addEventListener('click', () => this.handleIconClick());
-    document.body.appendChild(icon);
+    `
+    icon.innerHTML = '💬'
+    icon.addEventListener('click', () => this.handleIconClick())
+    document.body.appendChild(icon)
   }
 
   private injectStyles(): void {
     // Check if styles are already injected
     if (document.getElementById('backchannel-styles')) {
-      return;
+      return
     }
 
-    const styleElement = document.createElement('style');
-    styleElement.id = 'backchannel-styles';
+    const styleElement = document.createElement('style')
+    styleElement.id = 'backchannel-styles'
     styleElement.textContent = `
       .backchannel-icon {
         position: fixed;
@@ -429,120 +429,120 @@ class BackChannelPlugin implements IBackChannelPlugin {
           display: none;
         }
       }
-    `;
+    `
 
-    document.head.appendChild(styleElement);
+    document.head.appendChild(styleElement)
   }
 
   private handleIconClick(): void {
     // If not enabled, always show package creation modal
     if (!this.isEnabled) {
       if (this.icon && typeof this.icon.openPackageModal === 'function') {
-        this.icon.openPackageModal();
+        this.icon.openPackageModal()
       } else {
-        console.warn('Package modal not available');
+        console.warn('Package modal not available')
       }
-      return;
+      return
     }
 
     // If enabled, show sidebar (transition from Active to Capture mode)
     if (this.sidebar) {
-      this.sidebar.show();
-      this.updateIconVisibility();
+      this.sidebar.show()
+      this.updateIconVisibility()
     } else {
-      console.warn('Sidebar not available');
+      console.warn('Sidebar not available')
     }
   }
 
   private handleSidebarClosed(): void {
     // Update icon visibility when sidebar is closed (transition from Capture to Active mode)
-    this.updateIconVisibility();
+    this.updateIconVisibility()
   }
 
   private handleStartCapture(): void {
     // Hide sidebar temporarily for element selection
     if (this.sidebar) {
-      this.sidebar.hide();
+      this.sidebar.hide()
     }
 
-    console.log('Starting element selection...');
-    this.enableElementSelection();
+    console.log('Starting element selection...')
+    this.enableElementSelection()
   }
 
   private handleExportComments(): void {
     // TODO: Implement CSV export logic
-    console.log('Exporting comments to CSV...');
+    console.log('Exporting comments to CSV...')
   }
 
   private handleCommentAdded(detail: {
-    comment: CaptureComment;
-    element: ReturnType<typeof this.getElementInfo>;
+    comment: CaptureComment
+    element: ReturnType<typeof this.getElementInfo>
   }): void {
     // Add visual feedback to the commented element
-    this.addElementVisualFeedback(detail.comment, detail.element);
+    this.addElementVisualFeedback(detail.comment, detail.element)
   }
 
   private updateIconVisibility(): void {
-    if (!this.icon) return;
+    if (!this.icon) return
 
     // Hide icon when sidebar is visible (Capture mode)
     // Show icon when sidebar is hidden (Active mode)
-    const sidebarVisible = this.sidebar?.visible || false;
+    const sidebarVisible = this.sidebar?.visible || false
 
     if (sidebarVisible) {
-      this.icon.style.display = 'none';
+      this.icon.style.display = 'none'
     } else {
-      this.icon.style.display = 'flex';
+      this.icon.style.display = 'flex'
     }
   }
 
   private enableElementSelection(): void {
-    if (this.isSelectingElement) return;
+    if (this.isSelectingElement) return
 
-    this.isSelectingElement = true;
-    this.createCancelButton();
-    this.addSelectionEventListeners();
-    this.addSelectionStyles();
+    this.isSelectingElement = true
+    this.createCancelButton()
+    this.addSelectionEventListeners()
+    this.addSelectionStyles()
 
     // Change cursor to indicate selection mode
-    document.body.style.cursor = 'crosshair';
+    document.body.style.cursor = 'crosshair'
   }
 
   private disableElementSelection(): void {
-    if (!this.isSelectingElement) return;
+    if (!this.isSelectingElement) return
 
-    this.isSelectingElement = false;
-    this.removeCancelButton();
-    this.removeSelectionEventListeners();
-    this.removeSelectionStyles();
-    this.clearHighlight();
+    this.isSelectingElement = false
+    this.removeCancelButton()
+    this.removeSelectionEventListeners()
+    this.removeSelectionStyles()
+    this.clearHighlight()
 
     // Clear any pending click timeout
     if (this.clickTimeout) {
-      clearTimeout(this.clickTimeout);
-      this.clickTimeout = null;
+      clearTimeout(this.clickTimeout)
+      this.clickTimeout = null
     }
 
     // Restore normal cursor
-    document.body.style.cursor = '';
+    document.body.style.cursor = ''
 
     // Show sidebar again
     if (this.sidebar) {
-      this.sidebar.show();
+      this.sidebar.show()
     }
   }
 
   private createCancelButton(): void {
-    if (this.selectionCancelButton) return;
+    if (this.selectionCancelButton) return
 
-    this.selectionCancelButton = document.createElement('button');
-    this.selectionCancelButton.id = 'backchannel-cancel-selection';
-    this.selectionCancelButton.textContent = 'Cancel selection (Esc)';
+    this.selectionCancelButton = document.createElement('button')
+    this.selectionCancelButton.id = 'backchannel-cancel-selection'
+    this.selectionCancelButton.textContent = 'Cancel selection (Esc)'
     this.selectionCancelButton.setAttribute(
       'aria-label',
       'Cancel element selection'
-    );
-    this.selectionCancelButton.setAttribute('tabindex', '0');
+    )
+    this.selectionCancelButton.setAttribute('tabindex', '0')
     this.selectionCancelButton.style.cssText = `
       position: fixed;
       top: 20px;
@@ -562,78 +562,78 @@ class BackChannelPlugin implements IBackChannelPlugin {
       user-select: none;
       min-width: 140px;
       text-align: center;
-    `;
+    `
 
     // Enhanced hover effects
     this.selectionCancelButton.addEventListener('mouseenter', () => {
       if (this.selectionCancelButton) {
-        this.selectionCancelButton.style.background = '#c82333';
-        this.selectionCancelButton.style.transform = 'translateY(-2px)';
+        this.selectionCancelButton.style.background = '#c82333'
+        this.selectionCancelButton.style.transform = 'translateY(-2px)'
         this.selectionCancelButton.style.boxShadow =
-          '0 6px 16px rgba(220, 53, 69, 0.4)';
+          '0 6px 16px rgba(220, 53, 69, 0.4)'
       }
-    });
+    })
 
     this.selectionCancelButton.addEventListener('mouseleave', () => {
       if (this.selectionCancelButton) {
-        this.selectionCancelButton.style.background = '#dc3545';
-        this.selectionCancelButton.style.transform = 'translateY(0)';
+        this.selectionCancelButton.style.background = '#dc3545'
+        this.selectionCancelButton.style.transform = 'translateY(0)'
         this.selectionCancelButton.style.boxShadow =
-          '0 4px 12px rgba(220, 53, 69, 0.3)';
+          '0 4px 12px rgba(220, 53, 69, 0.3)'
       }
-    });
+    })
 
     // Focus handling for accessibility
     this.selectionCancelButton.addEventListener('focus', () => {
       if (this.selectionCancelButton) {
-        this.selectionCancelButton.style.outline = '2px solid #ffffff';
-        this.selectionCancelButton.style.outlineOffset = '2px';
+        this.selectionCancelButton.style.outline = '2px solid #ffffff'
+        this.selectionCancelButton.style.outlineOffset = '2px'
       }
-    });
+    })
 
     this.selectionCancelButton.addEventListener('blur', () => {
       if (this.selectionCancelButton) {
-        this.selectionCancelButton.style.outline = 'none';
+        this.selectionCancelButton.style.outline = 'none'
       }
-    });
+    })
 
     // Click handler with debouncing
-    let cancelClickTimeout: ReturnType<typeof setTimeout> | null = null;
+    let cancelClickTimeout: ReturnType<typeof setTimeout> | null = null
     this.selectionCancelButton.addEventListener('click', e => {
-      e.preventDefault();
-      e.stopPropagation();
+      e.preventDefault()
+      e.stopPropagation()
 
-      if (cancelClickTimeout) return; // Prevent rapid clicks
+      if (cancelClickTimeout) return // Prevent rapid clicks
 
       cancelClickTimeout = setTimeout(() => {
-        console.log('Element selection cancelled via button');
-        this.disableElementSelection();
-        cancelClickTimeout = null;
-      }, 100);
-    });
+        console.log('Element selection cancelled via button')
+        this.disableElementSelection()
+        cancelClickTimeout = null
+      }, 100)
+    })
 
     // Keyboard support
     this.selectionCancelButton.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        this.selectionCancelButton?.click();
+        e.preventDefault()
+        this.selectionCancelButton?.click()
       }
-    });
+    })
 
-    document.body.appendChild(this.selectionCancelButton);
+    document.body.appendChild(this.selectionCancelButton)
 
     // Auto-focus for keyboard accessibility
     setTimeout(() => {
-      this.selectionCancelButton?.focus();
-    }, 100);
+      this.selectionCancelButton?.focus()
+    }, 100)
   }
 
   private removeCancelButton(): void {
     if (this.selectionCancelButton && this.selectionCancelButton.parentNode) {
       this.selectionCancelButton.parentNode.removeChild(
         this.selectionCancelButton
-      );
-      this.selectionCancelButton = null;
+      )
+      this.selectionCancelButton = null
     }
   }
 
@@ -641,41 +641,41 @@ class BackChannelPlugin implements IBackChannelPlugin {
     // Use event delegation for better performance
     document.addEventListener('mouseover', this.handleElementHover, {
       passive: true,
-    });
+    })
     document.addEventListener('mouseout', this.handleElementLeave, {
       passive: true,
-    });
-    document.addEventListener('click', this.handleElementClick);
-    document.addEventListener('keydown', this.handleSelectionKeydown);
+    })
+    document.addEventListener('click', this.handleElementClick)
+    document.addEventListener('keydown', this.handleSelectionKeydown)
   }
 
   private removeSelectionEventListeners(): void {
-    document.removeEventListener('mouseover', this.handleElementHover);
-    document.removeEventListener('mouseout', this.handleElementLeave);
-    document.removeEventListener('click', this.handleElementClick);
-    document.removeEventListener('keydown', this.handleSelectionKeydown);
+    document.removeEventListener('mouseover', this.handleElementHover)
+    document.removeEventListener('mouseout', this.handleElementLeave)
+    document.removeEventListener('click', this.handleElementClick)
+    document.removeEventListener('keydown', this.handleSelectionKeydown)
   }
 
   private handleElementHover = (event: MouseEvent): void => {
-    if (!this.isSelectingElement) return;
+    if (!this.isSelectingElement) return
 
-    const target = event.target as HTMLElement;
-    if (this.shouldIgnoreElement(target)) return;
+    const target = event.target as HTMLElement
+    if (this.shouldIgnoreElement(target)) return
 
     // Find the most appropriate element to highlight (handle nested elements)
-    const elementToHighlight = this.findBestElementToHighlight(target);
+    const elementToHighlight = this.findBestElementToHighlight(target)
 
     // Only highlight if it's different from current
     if (elementToHighlight !== this.currentHighlightedElement) {
-      this.highlightElement(elementToHighlight);
+      this.highlightElement(elementToHighlight)
     }
-  };
+  }
 
   private handleElementLeave = (event: MouseEvent): void => {
-    if (!this.isSelectingElement) return;
+    if (!this.isSelectingElement) return
 
-    const target = event.target as HTMLElement;
-    const relatedTarget = event.relatedTarget as HTMLElement;
+    const target = event.target as HTMLElement
+    const relatedTarget = event.relatedTarget as HTMLElement
 
     // Don't clear highlight if moving to a child element or related element
     if (
@@ -684,7 +684,7 @@ class BackChannelPlugin implements IBackChannelPlugin {
         relatedTarget.contains(target) ||
         this.shouldIgnoreElement(target))
     ) {
-      return;
+      return
     }
 
     // Use a small delay to prevent flicker when moving between elements
@@ -693,52 +693,52 @@ class BackChannelPlugin implements IBackChannelPlugin {
         this.isSelectingElement &&
         this.currentHighlightedElement === target
       ) {
-        this.clearHighlight();
+        this.clearHighlight()
       }
-    }, 10);
-  };
+    }, 10)
+  }
 
   private handleElementClick = (event: MouseEvent): void => {
-    if (!this.isSelectingElement) return;
+    if (!this.isSelectingElement) return
 
-    event.preventDefault();
-    event.stopPropagation();
+    event.preventDefault()
+    event.stopPropagation()
 
-    const target = event.target as HTMLElement;
-    if (this.shouldIgnoreElement(target)) return;
+    const target = event.target as HTMLElement
+    if (this.shouldIgnoreElement(target)) return
 
     // Handle potential double/rapid clicks by debouncing
     if (this.clickTimeout) {
-      clearTimeout(this.clickTimeout);
+      clearTimeout(this.clickTimeout)
     }
 
     this.clickTimeout = setTimeout(() => {
       // Find the best element to select (same logic as highlighting)
-      const elementToSelect = this.findBestElementToHighlight(target);
-      this.selectElement(elementToSelect);
-      this.clickTimeout = null;
-    }, 100);
-  };
+      const elementToSelect = this.findBestElementToHighlight(target)
+      this.selectElement(elementToSelect)
+      this.clickTimeout = null
+    }, 100)
+  }
 
   private handleSelectionKeydown = (event: KeyboardEvent): void => {
-    if (!this.isSelectingElement) return;
+    if (!this.isSelectingElement) return
 
     switch (event.key) {
       case 'Escape':
-        event.preventDefault();
-        console.log('Element selection cancelled (Escape key)');
-        this.disableElementSelection();
-        break;
+        event.preventDefault()
+        console.log('Element selection cancelled (Escape key)')
+        this.disableElementSelection()
+        break
 
       case 'Enter':
-        event.preventDefault();
+        event.preventDefault()
         if (this.currentHighlightedElement) {
           const elementToSelect = this.findBestElementToHighlight(
             this.currentHighlightedElement
-          );
-          this.selectElement(elementToSelect);
+          )
+          this.selectElement(elementToSelect)
         }
-        break;
+        break
 
       case 'Tab':
         // Allow tab navigation to the cancel button
@@ -746,28 +746,28 @@ class BackChannelPlugin implements IBackChannelPlugin {
           this.selectionCancelButton &&
           !this.selectionCancelButton.contains(event.target as Node)
         ) {
-          event.preventDefault();
-          this.selectionCancelButton.focus();
+          event.preventDefault()
+          this.selectionCancelButton.focus()
         }
-        break;
+        break
 
       case 'ArrowUp':
       case 'ArrowDown':
       case 'ArrowLeft':
       case 'ArrowRight':
-        event.preventDefault();
-        this.navigateToNextElement(event.key);
-        break;
+        event.preventDefault()
+        this.navigateToNextElement(event.key)
+        break
 
       case 'h':
       case 'H':
         if (event.ctrlKey || event.metaKey) {
-          event.preventDefault();
-          this.showKeyboardHelp();
+          event.preventDefault()
+          this.showKeyboardHelp()
         }
-        break;
+        break
     }
-  };
+  }
 
   private shouldIgnoreElement(element: HTMLElement): boolean {
     // Ignore BackChannel elements
@@ -776,7 +776,7 @@ class BackChannelPlugin implements IBackChannelPlugin {
       element.tagName === 'BACKCHANNEL-ICON' ||
       element.tagName === 'BACKCHANNEL-SIDEBAR'
     ) {
-      return true;
+      return true
     }
 
     // Ignore elements that are children of BackChannel components
@@ -785,7 +785,7 @@ class BackChannelPlugin implements IBackChannelPlugin {
       element.closest('backchannel-sidebar') ||
       element.closest('#backchannel-cancel-selection')
     ) {
-      return true;
+      return true
     }
 
     // Ignore script tags, style tags, and other non-content elements
@@ -794,29 +794,29 @@ class BackChannelPlugin implements IBackChannelPlugin {
         element.tagName
       )
     ) {
-      return true;
+      return true
     }
 
     // Ignore elements with no visible content
     if (element.offsetWidth === 0 && element.offsetHeight === 0) {
-      return true;
+      return true
     }
 
     // Ignore elements that are not displayed
-    const computedStyle = window.getComputedStyle(element);
+    const computedStyle = window.getComputedStyle(element)
     if (
       computedStyle.display === 'none' ||
       computedStyle.visibility === 'hidden'
     ) {
-      return true;
+      return true
     }
 
-    return false;
+    return false
   }
 
   private findBestElementToHighlight(target: HTMLElement): HTMLElement {
     // Start with the target element
-    let current = target;
+    let current = target
 
     // If target is a text node or inline element, try to find a better parent
     const inlineElements = [
@@ -828,7 +828,7 @@ class BackChannelPlugin implements IBackChannelPlugin {
       'B',
       'CODE',
       'SMALL',
-    ];
+    ]
 
     // Elements that should be selectable at their own level (don't traverse up)
     const selectableElements = [
@@ -859,7 +859,7 @@ class BackChannelPlugin implements IBackChannelPlugin {
       'MAIN',
       'FIGURE',
       'FIGCAPTION',
-    ];
+    ]
 
     // If the target is already a selectable element, use it directly
     if (
@@ -868,21 +868,21 @@ class BackChannelPlugin implements IBackChannelPlugin {
       target.offsetWidth > 10 &&
       target.offsetHeight > 10
     ) {
-      return target;
+      return target
     }
 
     // Walk up the DOM to find a good element to highlight
     while (current && current !== document.body) {
       // Skip if this element should be ignored
       if (this.shouldIgnoreElement(current)) {
-        current = current.parentElement!;
-        continue;
+        current = current.parentElement!
+        continue
       }
 
       // Check if element has meaningful content or structure
-      const hasContent = current.textContent?.trim().length > 0;
-      const hasSize = current.offsetWidth > 20 && current.offsetHeight > 20;
-      const isBlockElement = !inlineElements.includes(current.tagName);
+      const hasContent = current.textContent?.trim().length > 0
+      const hasSize = current.offsetWidth > 20 && current.offsetHeight > 20
+      const isBlockElement = !inlineElements.includes(current.tagName)
 
       // If it's a selectable element, use it (don't traverse further up)
       if (
@@ -890,90 +890,90 @@ class BackChannelPlugin implements IBackChannelPlugin {
         hasContent &&
         hasSize
       ) {
-        return current;
+        return current
       }
 
       // If it's a good candidate and either block element or the original target, use it
       if (hasContent && hasSize && (isBlockElement || current === target)) {
-        return current;
+        return current
       }
 
       // Move to parent
-      current = current.parentElement!;
+      current = current.parentElement!
     }
 
     // Fall back to original target if no better element found
-    return target;
+    return target
   }
 
   private highlightElement(element: HTMLElement): void {
-    this.clearHighlight();
-    this.currentHighlightedElement = element;
-    element.classList.add('backchannel-highlight');
+    this.clearHighlight()
+    this.currentHighlightedElement = element
+    element.classList.add('backchannel-highlight')
 
     // Add intelligent tooltip positioning based on element position
-    this.positionTooltip(element);
+    this.positionTooltip(element)
   }
 
   private positionTooltip(element: HTMLElement): void {
-    const rect = element.getBoundingClientRect();
+    const rect = element.getBoundingClientRect()
     const viewport = {
       width: window.innerWidth,
       height: window.innerHeight,
-    };
+    }
 
     // Remove existing positioning classes
-    element.classList.remove('tooltip-bottom', 'tooltip-left', 'tooltip-right');
+    element.classList.remove('tooltip-bottom', 'tooltip-left', 'tooltip-right')
 
     // Check if tooltip would be cut off at top (need to position below)
     if (rect.top < 40) {
-      element.classList.add('tooltip-bottom');
+      element.classList.add('tooltip-bottom')
     }
 
     // Check if tooltip would be cut off at left (need to position from left edge)
     if (rect.left < 100) {
-      element.classList.add('tooltip-left');
+      element.classList.add('tooltip-left')
     }
 
     // Check if tooltip would be cut off at right (need to position from right edge)
     if (rect.right > viewport.width - 100) {
-      element.classList.add('tooltip-right');
+      element.classList.add('tooltip-right')
     }
   }
 
   private clearHighlight(): void {
     if (this.currentHighlightedElement) {
-      this.currentHighlightedElement.classList.remove('backchannel-highlight');
-      this.currentHighlightedElement = null;
+      this.currentHighlightedElement.classList.remove('backchannel-highlight')
+      this.currentHighlightedElement = null
     }
   }
 
   private selectElement(element: HTMLElement): void {
-    const elementInfo = this.getElementInfo(element);
+    const elementInfo = this.getElementInfo(element)
 
     // Disable element selection
-    this.disableElementSelection();
+    this.disableElementSelection()
 
     // Show comment form in sidebar
     if (
       this.sidebar &&
       typeof this.sidebar.showCommentFormForElement === 'function'
     ) {
-      this.sidebar.showCommentFormForElement(elementInfo);
+      this.sidebar.showCommentFormForElement(elementInfo)
     } else {
-      console.warn('Sidebar comment form not available');
+      console.warn('Sidebar comment form not available')
     }
   }
 
   private getElementInfo(element: HTMLElement): {
-    tagName: string;
-    xpath: string;
-    cssSelector: string;
-    textContent: string;
-    attributes: Record<string, string>;
-    boundingRect: DOMRect;
-    elementIndex: number;
-    parentInfo: string;
+    tagName: string
+    xpath: string
+    cssSelector: string
+    textContent: string
+    attributes: Record<string, string>
+    boundingRect: DOMRect
+    elementIndex: number
+    parentInfo: string
   } {
     return {
       tagName: element.tagName.toLowerCase(),
@@ -984,25 +984,25 @@ class BackChannelPlugin implements IBackChannelPlugin {
       boundingRect: element.getBoundingClientRect(),
       elementIndex: this.getElementIndex(element),
       parentInfo: this.getParentInfo(element),
-    };
+    }
   }
 
   private getXPath(element: HTMLElement): string {
-    const parts: string[] = [];
-    let current: HTMLElement | null = element;
+    const parts: string[] = []
+    let current: HTMLElement | null = element
 
     while (
       current &&
       current.nodeType === Node.ELEMENT_NODE &&
       current !== document.body
     ) {
-      let selector = current.tagName.toLowerCase();
+      let selector = current.tagName.toLowerCase()
 
       // Add ID if present (makes XPath more specific and reliable)
       if (current.id) {
-        selector += `[@id='${current.id}']`;
-        parts.unshift(selector);
-        break; // ID should be unique, so we can stop here
+        selector += `[@id='${current.id}']`
+        parts.unshift(selector)
+        break // ID should be unique, so we can stop here
       }
 
       // Add class if present (for better specificity)
@@ -1010,55 +1010,55 @@ class BackChannelPlugin implements IBackChannelPlugin {
         const classes = current.className
           .trim()
           .split(/\s+/)
-          .filter(c => c.length > 0 && !c.startsWith('backchannel-')); // Exclude BackChannel classes
+          .filter(c => c.length > 0 && !c.startsWith('backchannel-')) // Exclude BackChannel classes
         if (classes.length > 0) {
           // Use the first class for specificity
-          selector += `[@class='${classes[0]}']`;
+          selector += `[@class='${classes[0]}']`
         }
       }
 
       // Always add position among siblings with the same tag to ensure uniqueness
-      const siblings = Array.from(current.parentNode?.children || []);
+      const siblings = Array.from(current.parentNode?.children || [])
       const sameTagSiblings = siblings.filter(
         sibling =>
           sibling.tagName.toLowerCase() === current!.tagName.toLowerCase()
-      );
+      )
 
       if (sameTagSiblings.length > 1) {
-        const index = sameTagSiblings.indexOf(current) + 1;
-        selector += `[${index}]`;
+        const index = sameTagSiblings.indexOf(current) + 1
+        selector += `[${index}]`
       }
 
-      parts.unshift(selector);
-      current = current.parentElement;
+      parts.unshift(selector)
+      current = current.parentElement
     }
 
-    return '//' + parts.join('/'); // Use // instead of / for better compatibility
+    return '//' + parts.join('/') // Use // instead of / for better compatibility
   }
 
   private getElementAttributes(element: HTMLElement): Record<string, string> {
-    const attributes: Record<string, string> = {};
+    const attributes: Record<string, string> = {}
 
     for (let i = 0; i < element.attributes.length; i++) {
-      const attr = element.attributes[i];
-      attributes[attr.name] = attr.value;
+      const attr = element.attributes[i]
+      attributes[attr.name] = attr.value
     }
 
-    return attributes;
+    return attributes
   }
 
   private getCSSSelector(element: HTMLElement): string {
-    const parts: string[] = [];
-    let current: HTMLElement | null = element;
+    const parts: string[] = []
+    let current: HTMLElement | null = element
 
     while (current && current !== document.body) {
-      let selector = current.tagName.toLowerCase();
+      let selector = current.tagName.toLowerCase()
 
       // Use ID if available (most specific)
       if (current.id) {
-        selector += `#${current.id}`;
-        parts.unshift(selector);
-        break;
+        selector += `#${current.id}`
+        parts.unshift(selector)
+        break
       }
 
       // Use class if available
@@ -1066,80 +1066,80 @@ class BackChannelPlugin implements IBackChannelPlugin {
         const classes = current.className
           .trim()
           .split(/\s+/)
-          .filter(c => c.length > 0 && !c.startsWith('backchannel-')); // Exclude BackChannel classes
+          .filter(c => c.length > 0 && !c.startsWith('backchannel-')) // Exclude BackChannel classes
         if (classes.length > 0) {
-          selector += `.${classes[0]}`;
+          selector += `.${classes[0]}`
         }
       }
 
       // Add nth-child if needed for specificity
       if (current.parentElement) {
-        const siblings = Array.from(current.parentElement.children);
-        const index = siblings.indexOf(current);
+        const siblings = Array.from(current.parentElement.children)
+        const index = siblings.indexOf(current)
         if (siblings.length > 1) {
-          selector += `:nth-child(${index + 1})`;
+          selector += `:nth-child(${index + 1})`
         }
       }
 
-      parts.unshift(selector);
-      current = current.parentElement;
+      parts.unshift(selector)
+      current = current.parentElement
     }
 
-    return parts.join(' > ');
+    return parts.join(' > ')
   }
 
   private getElementIndex(element: HTMLElement): number {
-    if (!element.parentElement) return 0;
+    if (!element.parentElement) return 0
 
-    const siblings = Array.from(element.parentElement.children);
-    return siblings.indexOf(element);
+    const siblings = Array.from(element.parentElement.children)
+    return siblings.indexOf(element)
   }
 
   private getParentInfo(element: HTMLElement): string {
-    if (!element.parentElement) return 'none';
+    if (!element.parentElement) return 'none'
 
-    const parent = element.parentElement;
-    let info = parent.tagName.toLowerCase();
+    const parent = element.parentElement
+    let info = parent.tagName.toLowerCase()
 
     if (parent.id) {
-      info += `#${parent.id}`;
+      info += `#${parent.id}`
     } else if (parent.className && typeof parent.className === 'string') {
       const classes = parent.className
         .trim()
         .split(/\s+/)
-        .filter(c => c.length > 0);
+        .filter(c => c.length > 0)
       if (classes.length > 0) {
-        info += `.${classes[0]}`;
+        info += `.${classes[0]}`
       }
     }
 
-    return info;
+    return info
   }
 
   private navigateToNextElement(direction: string): void {
-    if (!this.currentHighlightedElement) return;
+    if (!this.currentHighlightedElement) return
 
-    const current = this.currentHighlightedElement;
-    let next: HTMLElement | null = null;
+    const current = this.currentHighlightedElement
+    let next: HTMLElement | null = null
 
     switch (direction) {
       case 'ArrowUp':
-        next = this.findElementInDirection(current, 'up');
-        break;
+        next = this.findElementInDirection(current, 'up')
+        break
       case 'ArrowDown':
-        next = this.findElementInDirection(current, 'down');
-        break;
+        next = this.findElementInDirection(current, 'down')
+        break
       case 'ArrowLeft':
-        next = this.findElementInDirection(current, 'left');
-        break;
+        next = this.findElementInDirection(current, 'left')
+        break
       case 'ArrowRight':
-        next = this.findElementInDirection(current, 'right');
-        break;
+        next = this.findElementInDirection(current, 'right')
+        break
     }
 
     if (next && !this.shouldIgnoreElement(next)) {
-      this.highlightElement(next);
-      this.scrollElementIntoView(next);
+      this.highlightElement(next)
+      this.scrollElementIntoView(next)
     }
   }
 
@@ -1147,58 +1147,58 @@ class BackChannelPlugin implements IBackChannelPlugin {
     current: HTMLElement,
     direction: 'up' | 'down' | 'left' | 'right'
   ): HTMLElement | null {
-    const rect = current.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
+    const rect = current.getBoundingClientRect()
+    const centerX = rect.left + rect.width / 2
+    const centerY = rect.top + rect.height / 2
 
     // Get all selectable elements
     const allElements = Array.from(document.querySelectorAll('*')).filter(
       el => el instanceof HTMLElement && !this.shouldIgnoreElement(el)
-    ) as HTMLElement[];
+    ) as HTMLElement[]
 
-    let bestElement: HTMLElement | null = null;
-    let bestDistance = Infinity;
+    let bestElement: HTMLElement | null = null
+    let bestDistance = Infinity
 
     for (const element of allElements) {
-      if (element === current) continue;
+      if (element === current) continue
 
-      const elementRect = element.getBoundingClientRect();
-      const elementCenterX = elementRect.left + elementRect.width / 2;
-      const elementCenterY = elementRect.top + elementRect.height / 2;
+      const elementRect = element.getBoundingClientRect()
+      const elementCenterX = elementRect.left + elementRect.width / 2
+      const elementCenterY = elementRect.top + elementRect.height / 2
 
-      let isInDirection = false;
-      let distance = 0;
+      let isInDirection = false
+      let distance = 0
 
       switch (direction) {
         case 'up':
-          isInDirection = elementCenterY < centerY;
+          isInDirection = elementCenterY < centerY
           distance =
-            Math.abs(elementCenterX - centerX) + (centerY - elementCenterY);
-          break;
+            Math.abs(elementCenterX - centerX) + (centerY - elementCenterY)
+          break
         case 'down':
-          isInDirection = elementCenterY > centerY;
+          isInDirection = elementCenterY > centerY
           distance =
-            Math.abs(elementCenterX - centerX) + (elementCenterY - centerY);
-          break;
+            Math.abs(elementCenterX - centerX) + (elementCenterY - centerY)
+          break
         case 'left':
-          isInDirection = elementCenterX < centerX;
+          isInDirection = elementCenterX < centerX
           distance =
-            Math.abs(elementCenterY - centerY) + (centerX - elementCenterX);
-          break;
+            Math.abs(elementCenterY - centerY) + (centerX - elementCenterX)
+          break
         case 'right':
-          isInDirection = elementCenterX > centerX;
+          isInDirection = elementCenterX > centerX
           distance =
-            Math.abs(elementCenterY - centerY) + (elementCenterX - centerX);
-          break;
+            Math.abs(elementCenterY - centerY) + (elementCenterX - centerX)
+          break
       }
 
       if (isInDirection && distance < bestDistance) {
-        bestDistance = distance;
-        bestElement = element;
+        bestDistance = distance
+        bestElement = element
       }
     }
 
-    return bestElement;
+    return bestElement
   }
 
   private scrollElementIntoView(element: HTMLElement): void {
@@ -1206,7 +1206,7 @@ class BackChannelPlugin implements IBackChannelPlugin {
       behavior: 'smooth',
       block: 'center',
       inline: 'center',
-    });
+    })
   }
 
   private showKeyboardHelp(): void {
@@ -1217,10 +1217,10 @@ Keyboard shortcuts for element selection:
 • Arrow keys: Navigate between elements
 • Tab: Focus cancel button
 • Ctrl+H: Show this help
-    `;
+    `
 
     // Create a temporary help popup
-    const helpPopup = document.createElement('div');
+    const helpPopup = document.createElement('div')
     helpPopup.style.cssText = `
       position: fixed;
       top: 50%;
@@ -1237,24 +1237,24 @@ Keyboard shortcuts for element selection:
       white-space: pre-line;
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
       max-width: 400px;
-    `;
-    helpPopup.textContent = helpMessage;
+    `
+    helpPopup.textContent = helpMessage
 
-    document.body.appendChild(helpPopup);
+    document.body.appendChild(helpPopup)
 
     // Remove help popup after 3 seconds
     setTimeout(() => {
       if (helpPopup.parentNode) {
-        helpPopup.parentNode.removeChild(helpPopup);
+        helpPopup.parentNode.removeChild(helpPopup)
       }
-    }, 3000);
+    }, 3000)
   }
 
   private addSelectionStyles(): void {
-    if (document.getElementById('backchannel-selection-styles')) return;
+    if (document.getElementById('backchannel-selection-styles')) return
 
-    const styleElement = document.createElement('style');
-    styleElement.id = 'backchannel-selection-styles';
+    const styleElement = document.createElement('style')
+    styleElement.id = 'backchannel-selection-styles'
     styleElement.textContent = `
       .backchannel-highlight {
         outline: 2px solid #007acc !important;
@@ -1339,17 +1339,15 @@ Keyboard shortcuts for element selection:
           opacity: 1 !important;
         }
       }
-    `;
+    `
 
-    document.head.appendChild(styleElement);
+    document.head.appendChild(styleElement)
   }
 
   private removeSelectionStyles(): void {
-    const styleElement = document.getElementById(
-      'backchannel-selection-styles'
-    );
+    const styleElement = document.getElementById('backchannel-selection-styles')
     if (styleElement && styleElement.parentNode) {
-      styleElement.parentNode.removeChild(styleElement);
+      styleElement.parentNode.removeChild(styleElement)
     }
   }
 
@@ -1359,28 +1357,28 @@ Keyboard shortcuts for element selection:
   ): void {
     // Safety check for elementInfo
     if (!elementInfo || !elementInfo.xpath) {
-      console.warn('Invalid element info for visual feedback:', elementInfo);
-      return;
+      console.warn('Invalid element info for visual feedback:', elementInfo)
+      return
     }
 
     // Find the element by XPath
-    const element = this.findElementByXPath(elementInfo.xpath);
+    const element = this.findElementByXPath(elementInfo.xpath)
     if (!element) {
       console.warn(
         'Could not find element for visual feedback:',
         elementInfo.xpath
-      );
-      return;
+      )
+      return
     }
 
     // Add background shading
-    this.addElementBackgroundShading(element);
+    this.addElementBackgroundShading(element)
 
     // Add comment badge
-    this.addCommentBadge(element, comment);
+    this.addCommentBadge(element, comment)
 
     // Ensure comment visual styles are loaded
-    this.addCommentVisualStyles();
+    this.addCommentVisualStyles()
   }
 
   private findElementByXPath(xpath: string): HTMLElement | null {
@@ -1391,22 +1389,22 @@ Keyboard shortcuts for element selection:
         null,
         XPathResult.FIRST_ORDERED_NODE_TYPE,
         null
-      );
-      return result.singleNodeValue as HTMLElement;
+      )
+      return result.singleNodeValue as HTMLElement
     } catch (error) {
-      console.warn('Error finding element by XPath:', error);
-      return null;
+      console.warn('Error finding element by XPath:', error)
+      return null
     }
   }
 
   private addElementBackgroundShading(element: HTMLElement): void {
     // Add a class for subtle background shading
-    element.classList.add('backchannel-commented');
+    element.classList.add('backchannel-commented')
 
     // Store the original background color if needed for restoration
     if (!element.dataset.originalBackground) {
-      const computedStyle = window.getComputedStyle(element);
-      element.dataset.originalBackground = computedStyle.backgroundColor;
+      const computedStyle = window.getComputedStyle(element)
+      element.dataset.originalBackground = computedStyle.backgroundColor
     }
   }
 
@@ -1416,34 +1414,34 @@ Keyboard shortcuts for element selection:
     _comment: CaptureComment
   ): void {
     // Check if element already has a badge
-    const existingBadge = element.querySelector('.backchannel-comment-badge');
+    const existingBadge = element.querySelector('.backchannel-comment-badge')
     if (existingBadge) {
       // Update badge count
-      const countElement = existingBadge.querySelector('.badge-count');
+      const countElement = existingBadge.querySelector('.badge-count')
       if (countElement) {
-        const currentCount = parseInt(countElement.textContent || '1', 10);
-        countElement.textContent = (currentCount + 1).toString();
+        const currentCount = parseInt(countElement.textContent || '1', 10)
+        countElement.textContent = (currentCount + 1).toString()
       }
-      return;
+      return
     }
 
     // Create new badge
-    const badge = document.createElement('div');
-    badge.className = 'backchannel-comment-badge';
+    const badge = document.createElement('div')
+    badge.className = 'backchannel-comment-badge'
     badge.innerHTML = `
       <span class="badge-icon">💬</span>
       <span class="badge-count">1</span>
-    `;
+    `
 
     // Add click handler to show comment details
     badge.addEventListener('click', event => {
-      event.stopPropagation();
-      this.showCommentDetails(element);
-    });
+      event.stopPropagation()
+      this.showCommentDetails(element)
+    })
 
     // Position badge relative to element
-    element.style.position = 'relative';
-    element.appendChild(badge);
+    element.style.position = 'relative'
+    element.appendChild(badge)
   }
 
   private async showCommentDetails(
@@ -1452,7 +1450,7 @@ Keyboard shortcuts for element selection:
   ): Promise<void> {
     // Get all comments for this element
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const _dbService = await this.getDatabaseService();
+    const _dbService = await this.getDatabaseService()
     // const allComments = await dbService.getComments();
     // const _elementComments = allComments.filter(
     //   c => c.location === this.getXPath(element)
@@ -1460,7 +1458,7 @@ Keyboard shortcuts for element selection:
 
     // Show sidebar with this element's comments highlighted
     if (this.sidebar) {
-      this.sidebar.show();
+      this.sidebar.show()
       // TODO: Add method to highlight specific comments in sidebar
     }
   }
@@ -1468,11 +1466,11 @@ Keyboard shortcuts for element selection:
   private addCommentVisualStyles(): void {
     // Check if styles are already injected
     if (document.getElementById('backchannel-comment-styles')) {
-      return;
+      return
     }
 
-    const styleElement = document.createElement('style');
-    styleElement.id = 'backchannel-comment-styles';
+    const styleElement = document.createElement('style')
+    styleElement.id = 'backchannel-comment-styles'
     styleElement.textContent = `
       /* Commented element background shading */
       .backchannel-commented {
@@ -1569,96 +1567,96 @@ Keyboard shortcuts for element selection:
           border-left: none !important;
         }
       }
-    `;
+    `
 
-    document.head.appendChild(styleElement);
+    document.head.appendChild(styleElement)
   }
 
   private removeCommentVisualStyles(): void {
-    const styleElement = document.getElementById('backchannel-comment-styles');
+    const styleElement = document.getElementById('backchannel-comment-styles')
     if (styleElement && styleElement.parentNode) {
-      styleElement.parentNode.removeChild(styleElement);
+      styleElement.parentNode.removeChild(styleElement)
     }
   }
 
   private async loadExistingComments(): Promise<void> {
     try {
-      const dbService = await this.getDatabaseService();
-      const allComments = await dbService.getComments();
+      const dbService = await this.getDatabaseService()
+      const allComments = await dbService.getComments()
       const currentPageComments = allComments.filter(
         comment => comment.pageUrl === window.location.href
-      );
+      )
 
       // Apply visual feedback for existing comments
       for (const comment of currentPageComments) {
-        const element = this.findElementByXPath(comment.location);
+        const element = this.findElementByXPath(comment.location)
         if (element) {
-          this.addElementBackgroundShading(element);
-          this.addCommentBadge(element, comment);
+          this.addElementBackgroundShading(element)
+          this.addCommentBadge(element, comment)
         } else {
           console.warn(
             'Could not find element for existing comment:',
             comment.location
-          );
+          )
         }
       }
 
       // Ensure comment visual styles are loaded
       if (currentPageComments.length > 0) {
-        this.addCommentVisualStyles();
+        this.addCommentVisualStyles()
       }
     } catch (error) {
-      console.error('Failed to load existing comments:', error);
+      console.error('Failed to load existing comments:', error)
     }
   }
 
   private async checkMetadataOrCreatePackage(): Promise<void> {
     try {
-      const db = await this.getDatabaseService();
-      const metadata = await db.getMetadata();
+      const db = await this.getDatabaseService()
+      const metadata = await db.getMetadata()
 
       if (metadata) {
         // Metadata exists, activate capture mode
-        this.setState(FeedbackState.CAPTURE);
+        this.setState(FeedbackState.CAPTURE)
       } else {
         // No metadata, show package creation modal
         if (this.icon && typeof this.icon.openPackageModal === 'function') {
-          this.icon.openPackageModal();
+          this.icon.openPackageModal()
         } else {
-          console.warn('Package modal not available');
+          console.warn('Package modal not available')
         }
       }
     } catch (error) {
-      console.error('Error checking metadata:', error);
+      console.error('Error checking metadata:', error)
       // Fallback to opening modal on error
       if (this.icon && typeof this.icon.openPackageModal === 'function') {
-        this.icon.openPackageModal();
+        this.icon.openPackageModal()
       } else {
-        console.warn('Package modal not available');
+        console.warn('Package modal not available')
       }
     }
   }
 
   private setState(newState: FeedbackState): void {
-    this.state = newState;
+    this.state = newState
 
     if (this.icon) {
       // Handle both Lit component and fallback icon
       if (typeof this.icon.setState === 'function') {
-        this.icon.setState(newState);
+        this.icon.setState(newState)
       } else {
         // Fallback: set attribute directly
-        this.icon.setAttribute('state', newState);
+        this.icon.setAttribute('state', newState)
       }
     }
   }
 
   getState(): FeedbackState {
-    return this.state;
+    return this.state
   }
 
   getConfig(): PluginConfig {
-    return { ...this.config };
+    return { ...this.config }
   }
 
   /**
@@ -1666,38 +1664,38 @@ Keyboard shortcuts for element selection:
    */
   async enableBackChannel(): Promise<void> {
     try {
-      this.isEnabled = true;
-      const db = await this.getDatabaseService();
-      db.clearEnabledStateCache();
+      this.isEnabled = true
+      const db = await this.getDatabaseService()
+      db.clearEnabledStateCache()
 
       // Initialize sidebar if not already created
       if (!this.sidebar) {
-        await this.initializeSidebar();
+        await this.initializeSidebar()
       }
 
       // Update icon enabled state and set state to capture
-      this.setState(FeedbackState.CAPTURE);
+      this.setState(FeedbackState.CAPTURE)
       if (this.icon) {
         if (typeof this.icon.setEnabled === 'function') {
-          this.icon.setEnabled(true);
+          this.icon.setEnabled(true)
         } else {
           // Fallback: set attribute directly
-          this.icon.setAttribute('enabled', 'true');
+          this.icon.setAttribute('enabled', 'true')
         }
       }
 
       // Show sidebar after package creation
       if (this.sidebar) {
-        this.sidebar.show();
-        this.updateIconVisibility();
+        this.sidebar.show()
+        this.updateIconVisibility()
       }
     } catch (error) {
-      console.error('Error enabling BackChannel:', error);
+      console.error('Error enabling BackChannel:', error)
     }
   }
 }
 
-const backChannelInstance = new BackChannelPlugin();
+const backChannelInstance = new BackChannelPlugin()
 
 if (typeof window !== 'undefined') {
   window.BackChannel = {
@@ -1709,16 +1707,16 @@ if (typeof window !== 'undefined') {
     getDatabaseService:
       backChannelInstance.getDatabaseService.bind(backChannelInstance),
     get isEnabled() {
-      return backChannelInstance['isEnabled'];
+      return backChannelInstance['isEnabled']
     },
-  };
+  }
 
   // Auto-initialize with default configuration when window loads
   window.addEventListener('load', () => {
     backChannelInstance.init().catch(error => {
-      console.error('BackChannel auto-initialization failed:', error);
-    });
-  });
+      console.error('BackChannel auto-initialization failed:', error)
+    })
+  })
 }
 
-export default backChannelInstance;
+export default backChannelInstance

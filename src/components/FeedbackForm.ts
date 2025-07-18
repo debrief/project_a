@@ -4,9 +4,9 @@
  * @author BackChannel Team
  */
 
-import { LitElement, html, css, TemplateResult } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
-import type { IBackChannelPlugin } from '../types';
+import { LitElement, html, css, TemplateResult } from 'lit'
+import { customElement, property, state } from 'lit/decorators.js'
+import type { IBackChannelPlugin } from '../types'
 
 /**
  * Feedback Form Component
@@ -15,27 +15,27 @@ import type { IBackChannelPlugin } from '../types';
 @customElement('feedback-form')
 export class FeedbackForm extends LitElement {
   @property({ type: Object })
-  backChannelPlugin!: IBackChannelPlugin;
+  backChannelPlugin!: IBackChannelPlugin
 
   @property({ type: Object })
   selectedElement: {
-    tagName: string;
-    xpath: string;
-    textContent: string;
-    [key: string]: unknown;
-  } | null = null;
+    tagName: string
+    xpath: string
+    textContent: string
+    [key: string]: unknown
+  } | null = null
 
   @state()
-  private commentText: string = '';
+  private commentText: string = ''
 
   @state()
-  private commentAuthor: string = '';
+  private commentAuthor: string = ''
 
   @state()
-  private isSubmitting: boolean = false;
+  private isSubmitting: boolean = false
 
   @state()
-  private formError: string = '';
+  private formError: string = ''
 
   static styles = css`
     :host {
@@ -189,20 +189,20 @@ export class FeedbackForm extends LitElement {
     .character-count.error {
       color: #dc3545;
     }
-  `;
+  `
 
   render(): TemplateResult {
-    if (!this.selectedElement) return html``;
+    if (!this.selectedElement) return html``
 
-    const textLength = this.commentText.length;
-    const maxLength = 1000;
-    const warningThreshold = 800;
+    const textLength = this.commentText.length
+    const maxLength = 1000
+    const warningThreshold = 800
 
-    let characterCountClass = 'character-count';
+    let characterCountClass = 'character-count'
     if (textLength > maxLength) {
-      characterCountClass += ' error';
+      characterCountClass += ' error'
     } else if (textLength > warningThreshold) {
-      characterCountClass += ' warning';
+      characterCountClass += ' warning'
     }
 
     return html`
@@ -282,44 +282,44 @@ export class FeedbackForm extends LitElement {
           </button>
         </div>
       </div>
-    `;
+    `
   }
 
   private handleCommentTextChange(event: Event): void {
-    const target = event.target as HTMLTextAreaElement;
-    this.commentText = target.value;
-    this.formError = '';
-    this.requestUpdate();
+    const target = event.target as HTMLTextAreaElement
+    this.commentText = target.value
+    this.formError = ''
+    this.requestUpdate()
   }
 
   private handleCommentAuthorChange(event: Event): void {
-    const target = event.target as HTMLInputElement;
-    this.commentAuthor = target.value;
+    const target = event.target as HTMLInputElement
+    this.commentAuthor = target.value
   }
 
   private handleCancelComment(): void {
-    this.resetForm();
-    this.dispatchEvent(new CustomEvent('form-cancel', { bubbles: true }));
+    this.resetForm()
+    this.dispatchEvent(new CustomEvent('form-cancel', { bubbles: true }))
   }
 
   private async handleSubmitComment(): Promise<void> {
     if (!this.selectedElement || !this.commentText.trim()) {
-      this.formError = 'Please enter a comment.';
-      return;
+      this.formError = 'Please enter a comment.'
+      return
     }
 
     if (this.commentText.length > 1000) {
-      this.formError = 'Comment is too long. Maximum 1000 characters allowed.';
-      return;
+      this.formError = 'Comment is too long. Maximum 1000 characters allowed.'
+      return
     }
 
-    this.isSubmitting = true;
-    this.formError = '';
+    this.isSubmitting = true
+    this.formError = ''
 
     try {
-      const dbService = await this.backChannelPlugin.getDatabaseService();
+      const dbService = await this.backChannelPlugin.getDatabaseService()
 
-      const selectedElementInfo = this.selectedElement;
+      const selectedElementInfo = this.selectedElement
 
       const comment = {
         id: Date.now().toString(),
@@ -330,39 +330,39 @@ export class FeedbackForm extends LitElement {
         snippet:
           selectedElementInfo!.textContent?.substring(0, 100) || undefined,
         author: this.commentAuthor.trim() || undefined,
-      };
+      }
 
-      await dbService.addComment(comment);
+      await dbService.addComment(comment)
 
-      this.showSuccessMessage('Comment saved successfully!');
+      this.showSuccessMessage('Comment saved successfully!')
 
-      this.resetForm();
+      this.resetForm()
 
       this.dispatchEvent(
         new CustomEvent('comment-saved', {
           detail: { comment, element: selectedElementInfo },
           bubbles: true,
         })
-      );
+      )
     } catch (error) {
-      console.error('Failed to save comment:', error);
-      this.formError = 'Failed to save comment. Please try again.';
+      console.error('Failed to save comment:', error)
+      this.formError = 'Failed to save comment. Please try again.'
     } finally {
-      this.isSubmitting = false;
+      this.isSubmitting = false
     }
   }
 
   private resetForm(): void {
-    this.commentText = '';
-    this.commentAuthor = '';
-    this.formError = '';
-    this.selectedElement = null;
+    this.commentText = ''
+    this.commentAuthor = ''
+    this.formError = ''
+    this.selectedElement = null
   }
 
   private showSuccessMessage(message: string): void {
-    const successDiv = document.createElement('div');
-    successDiv.className = 'form-success';
-    successDiv.textContent = message;
+    const successDiv = document.createElement('div')
+    successDiv.className = 'form-success'
+    successDiv.textContent = message
     successDiv.style.cssText = `
       position: fixed;
       top: 20px;
@@ -375,30 +375,30 @@ export class FeedbackForm extends LitElement {
       padding: 12px 20px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
       animation: slideIn 0.3s ease;
-    `;
+    `
 
-    document.body.appendChild(successDiv);
+    document.body.appendChild(successDiv)
 
     setTimeout(() => {
       if (successDiv.parentNode) {
-        successDiv.parentNode.removeChild(successDiv);
+        successDiv.parentNode.removeChild(successDiv)
       }
-    }, 3000);
+    }, 3000)
   }
 
   /**
    * Set the form data for editing
    */
   setFormData(elementInfo: {
-    tagName: string;
-    xpath: string;
-    textContent: string;
-    [key: string]: unknown;
+    tagName: string
+    xpath: string
+    textContent: string
+    [key: string]: unknown
   }): void {
-    this.selectedElement = elementInfo;
-    this.commentText = '';
-    this.commentAuthor = '';
-    this.formError = '';
-    this.requestUpdate();
+    this.selectedElement = elementInfo
+    this.commentText = ''
+    this.commentAuthor = ''
+    this.formError = ''
+    this.requestUpdate()
   }
 }

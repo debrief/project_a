@@ -4,12 +4,12 @@
  * @author BackChannel Team
  */
 
-import { LitElement, html, css, TemplateResult } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
-import type { IBackChannelPlugin } from '../types';
-import type { CommentsSection } from './CommentsSection';
-import './FeedbackForm.js';
-import './CommentsSection.js';
+import { LitElement, html, css, TemplateResult } from 'lit'
+import { customElement, property, state } from 'lit/decorators.js'
+import type { IBackChannelPlugin } from '../types'
+import type { CommentsSection } from './CommentsSection'
+import './FeedbackForm.js'
+import './CommentsSection.js'
 
 /**
  * BackChannel Sidebar Component
@@ -18,21 +18,21 @@ import './CommentsSection.js';
 @customElement('backchannel-sidebar')
 export class BackChannelSidebar extends LitElement {
   @property({ type: Object })
-  backChannelPlugin!: IBackChannelPlugin;
+  backChannelPlugin!: IBackChannelPlugin
 
   @property({ type: Boolean })
-  visible: boolean = false;
+  visible: boolean = false
 
   @state()
-  private showCommentForm: boolean = false;
+  private showCommentForm: boolean = false
 
   @state()
   private selectedElement: {
-    tagName: string;
-    xpath: string;
-    textContent: string;
-    [key: string]: unknown;
-  } | null = null;
+    tagName: string
+    xpath: string
+    textContent: string
+    [key: string]: unknown
+  } | null = null
 
   static styles = css`
     :host {
@@ -176,11 +176,11 @@ export class BackChannelSidebar extends LitElement {
     .sidebar-content::-webkit-scrollbar-thumb:hover {
       background: #a1a1a1;
     }
-  `;
+  `
 
   connectedCallback() {
-    super.connectedCallback();
-    this.restoreVisibilityState();
+    super.connectedCallback()
+    this.restoreVisibilityState()
   }
 
   render(): TemplateResult {
@@ -218,24 +218,24 @@ export class BackChannelSidebar extends LitElement {
           .backChannelPlugin=${this.backChannelPlugin}
         ></comments-section>
       </div>
-    `;
+    `
   }
 
   private closeSidebar(): void {
-    this.visible = false;
-    this.removeAttribute('visible');
-    this.updateVisibilityState();
-    this.dispatchEvent(new CustomEvent('sidebar-closed', { bubbles: true }));
+    this.visible = false
+    this.removeAttribute('visible')
+    this.updateVisibilityState()
+    this.dispatchEvent(new CustomEvent('sidebar-closed', { bubbles: true }))
   }
 
   private startCapture(): void {
-    console.log('Starting feedback capture...');
-    this.dispatchEvent(new CustomEvent('start-capture', { bubbles: true }));
+    console.log('Starting feedback capture...')
+    this.dispatchEvent(new CustomEvent('start-capture', { bubbles: true }))
   }
 
   private exportComments(): void {
-    console.log('Exporting comments...');
-    this.dispatchEvent(new CustomEvent('export-comments', { bubbles: true }));
+    console.log('Exporting comments...')
+    this.dispatchEvent(new CustomEvent('export-comments', { bubbles: true }))
   }
 
   private updateVisibilityState(): void {
@@ -243,26 +243,26 @@ export class BackChannelSidebar extends LitElement {
       localStorage.setItem(
         'backchannel-sidebar-visible',
         this.visible.toString()
-      );
+      )
     } catch (error) {
-      console.warn('Failed to save sidebar visibility state:', error);
+      console.warn('Failed to save sidebar visibility state:', error)
     }
   }
 
   private restoreVisibilityState(): void {
     try {
-      const savedState = localStorage.getItem('backchannel-sidebar-visible');
+      const savedState = localStorage.getItem('backchannel-sidebar-visible')
       if (savedState === 'true') {
-        this.visible = true;
-        this.setAttribute('visible', 'true');
+        this.visible = true
+        this.setAttribute('visible', 'true')
       } else {
-        this.visible = false;
-        this.removeAttribute('visible');
+        this.visible = false
+        this.removeAttribute('visible')
       }
     } catch (error) {
-      console.warn('Failed to restore sidebar visibility state:', error);
-      this.visible = false;
-      this.removeAttribute('visible');
+      console.warn('Failed to restore sidebar visibility state:', error)
+      this.visible = false
+      this.removeAttribute('visible')
     }
   }
 
@@ -270,18 +270,18 @@ export class BackChannelSidebar extends LitElement {
    * Show the sidebar
    */
   show(): void {
-    this.visible = true;
-    this.setAttribute('visible', 'true');
-    this.updateVisibilityState();
+    this.visible = true
+    this.setAttribute('visible', 'true')
+    this.updateVisibilityState()
   }
 
   /**
    * Hide the sidebar
    */
   hide(): void {
-    this.visible = false;
-    this.removeAttribute('visible');
-    this.updateVisibilityState();
+    this.visible = false
+    this.removeAttribute('visible')
+    this.updateVisibilityState()
   }
 
   /**
@@ -289,9 +289,9 @@ export class BackChannelSidebar extends LitElement {
    */
   toggle(): void {
     if (this.visible) {
-      this.hide();
+      this.hide()
     } else {
-      this.show();
+      this.show()
     }
   }
 
@@ -301,9 +301,9 @@ export class BackChannelSidebar extends LitElement {
   refreshComments(): void {
     const commentsSection = this.shadowRoot?.querySelector(
       'comments-section'
-    ) as CommentsSection;
+    ) as CommentsSection
     if (commentsSection) {
-      commentsSection.refreshComments();
+      commentsSection.refreshComments()
     }
   }
 
@@ -311,27 +311,27 @@ export class BackChannelSidebar extends LitElement {
    * Show comment form for selected element
    */
   showCommentFormForElement(elementInfo: {
-    tagName: string;
-    xpath: string;
-    textContent: string;
-    [key: string]: unknown;
+    tagName: string
+    xpath: string
+    textContent: string
+    [key: string]: unknown
   }): void {
-    this.selectedElement = elementInfo;
-    this.showCommentForm = true;
-    this.requestUpdate();
+    this.selectedElement = elementInfo
+    this.showCommentForm = true
+    this.requestUpdate()
   }
 
   /**
    * Hide comment form
    */
   hideCommentForm(): void {
-    this.showCommentForm = false;
-    this.selectedElement = null;
-    this.requestUpdate();
+    this.showCommentForm = false
+    this.selectedElement = null
+    this.requestUpdate()
   }
 
   private renderCommentForm(): TemplateResult {
-    if (!this.selectedElement) return html``;
+    if (!this.selectedElement) return html``
 
     return html`
       <feedback-form
@@ -340,24 +340,24 @@ export class BackChannelSidebar extends LitElement {
         @form-cancel=${this.handleFormCancel}
         @comment-saved=${this.handleCommentSaved}
       ></feedback-form>
-    `;
+    `
   }
 
   private handleFormCancel(): void {
-    this.hideCommentForm();
+    this.hideCommentForm()
   }
 
   private handleCommentSaved(event: CustomEvent): void {
-    const { comment, element } = event.detail;
+    const { comment, element } = event.detail
 
-    this.hideCommentForm();
-    this.refreshComments();
+    this.hideCommentForm()
+    this.refreshComments()
 
     this.dispatchEvent(
       new CustomEvent('comment-added', {
         detail: { comment, element },
         bubbles: true,
       })
-    );
+    )
   }
 }

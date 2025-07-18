@@ -9,22 +9,22 @@ import {
   DocumentMetadata,
   isCaptureComment,
   FakeDbStore,
-} from '../types';
-import { DatabaseService } from '../services/DatabaseService';
+} from '../types'
+import { DatabaseService } from '../services/DatabaseService'
 
 /**
  * Demo database seed structure (expected in window.demoDatabaseSeed)
  */
 export interface DemoDatabaseSeed {
-  version: string;
-  metadata: DocumentMetadata;
-  comments: CaptureComment[];
+  version: string
+  metadata: DocumentMetadata
+  comments: CaptureComment[]
 }
 
 /**
  * localStorage key for tracking seed versions
  */
-const SEED_VERSION_KEY = 'backchannel-seed-version';
+const SEED_VERSION_KEY = 'backchannel-seed-version'
 
 /**
  * Validates and retrieves demo seed data from window.demoDatabaseSeed
@@ -32,43 +32,43 @@ const SEED_VERSION_KEY = 'backchannel-seed-version';
  */
 function getDemoSeed(): DemoDatabaseSeed | null {
   if (typeof window === 'undefined' || !window.demoDatabaseSeed) {
-    return null;
+    return null
   }
 
-  const seed = window.demoDatabaseSeed as unknown as Record<string, unknown>;
+  const seed = window.demoDatabaseSeed as unknown as Record<string, unknown>
 
   // Validate seed structure
   if (!seed.version || typeof seed.version !== 'string') {
-    console.warn('Demo seed missing or invalid version');
-    return null;
+    console.warn('Demo seed missing or invalid version')
+    return null
   }
 
   if (!seed.metadata || typeof seed.metadata !== 'object') {
-    console.warn('Demo seed missing or invalid metadata');
-    return null;
+    console.warn('Demo seed missing or invalid metadata')
+    return null
   }
 
   if (!Array.isArray(seed.comments)) {
-    console.warn('Demo seed missing or invalid comments array');
-    return null;
+    console.warn('Demo seed missing or invalid comments array')
+    return null
   }
 
   // Validate comments using type guard
   const validComments = (seed.comments as unknown[]).filter(
     (comment: unknown) => {
       if (!isCaptureComment(comment)) {
-        console.warn('Invalid comment in demo seed:', comment);
-        return false;
+        console.warn('Invalid comment in demo seed:', comment)
+        return false
       }
-      return true;
+      return true
     }
-  );
+  )
 
   return {
     version: seed.version as string,
     metadata: seed.metadata as DocumentMetadata,
     comments: validComments as CaptureComment[],
-  };
+  }
 }
 
 /**
@@ -77,20 +77,20 @@ function getDemoSeed(): DemoDatabaseSeed | null {
  */
 function getFakeDbConfig(): { dbName: string; dbVersion: number } | null {
   if (typeof window === 'undefined') {
-    return null;
+    return null
   }
 
   // Check if fakeData is available with database configuration
-  const fakeData = (window as unknown as { fakeData?: FakeDbStore }).fakeData;
+  const fakeData = (window as unknown as { fakeData?: FakeDbStore }).fakeData
   if (fakeData && fakeData.databases && fakeData.databases.length > 0) {
-    const firstDb = fakeData.databases[0];
+    const firstDb = fakeData.databases[0]
     return {
       dbName: firstDb.name,
       dbVersion: firstDb.version,
-    };
+    }
   }
 
-  return null;
+  return null
 }
 
 /**
@@ -104,35 +104,35 @@ async function databaseExists(dbName: string): Promise<boolean> {
       // Check if indexedDB is available (might not be in test environment)
       if (typeof indexedDB === 'undefined' || !indexedDB || !indexedDB.open) {
         // In test environment, assume database doesn't exist
-        resolve(false);
-        return;
+        resolve(false)
+        return
       }
 
       // Try to open database with version 1 to see if it exists
-      const request = indexedDB.open(dbName);
+      const request = indexedDB.open(dbName)
 
       request.onsuccess = () => {
-        const db = request.result;
-        const exists = db.version > 0;
-        db.close();
-        resolve(exists);
-      };
+        const db = request.result
+        const exists = db.version > 0
+        db.close()
+        resolve(exists)
+      }
 
       request.onerror = () => {
         // Database doesn't exist or can't be opened
-        resolve(false);
-      };
+        resolve(false)
+      }
 
       request.onblocked = () => {
         // Database exists but is blocked
-        resolve(true);
-      };
+        resolve(true)
+      }
     } catch (error) {
-      console.warn('Error checking database existence:', error);
+      console.warn('Error checking database existence:', error)
       // Any error means we can't check, assume doesn't exist
-      resolve(false);
+      resolve(false)
     }
-  });
+  })
 }
 
 /**
@@ -150,22 +150,22 @@ function closeActiveConnections(dbName: string): void {
         window as unknown as {
           BackChannel: {
             databaseService?: {
-              getDatabaseName?: () => string;
-              close?: () => void;
-            };
-          };
+              getDatabaseName?: () => string
+              close?: () => void
+            }
+          }
         }
-      ).BackChannel;
+      ).BackChannel
       if (
         backChannel.databaseService &&
         backChannel.databaseService.getDatabaseName &&
         backChannel.databaseService.getDatabaseName() === dbName
       ) {
-        backChannel.databaseService.close();
+        backChannel.databaseService.close()
       }
     }
   } catch (error) {
-    console.warn('Error closing active connections:', error);
+    console.warn('Error closing active connections:', error)
   }
 }
 
@@ -176,32 +176,29 @@ function closeActiveConnections(dbName: string): void {
  */
 async function deleteDatabase(dbName: string): Promise<void> {
   // First close any active connections
-  closeActiveConnections(dbName);
+  closeActiveConnections(dbName)
 
   return new Promise((resolve, reject) => {
-    const deleteRequest = indexedDB.deleteDatabase(dbName);
+    const deleteRequest = indexedDB.deleteDatabase(dbName)
 
     deleteRequest.onsuccess = () => {
-      resolve();
-    };
+      resolve()
+    }
 
     deleteRequest.onerror = () => {
-      console.error(
-        `Failed to delete database ${dbName}:`,
-        deleteRequest.error
-      );
-      reject(deleteRequest.error);
-    };
+      console.error(`Failed to delete database ${dbName}:`, deleteRequest.error)
+      reject(deleteRequest.error)
+    }
 
     deleteRequest.onblocked = () => {
-      console.warn(`Database ${dbName} deletion blocked - close other tabs`);
+      console.warn(`Database ${dbName} deletion blocked - close other tabs`)
       // Add a timeout to resolve anyway after a few seconds
       setTimeout(() => {
-        console.warn(`Database deletion timeout, continuing anyway`);
-        resolve();
-      }, 3000);
-    };
-  });
+        console.warn(`Database deletion timeout, continuing anyway`)
+        resolve()
+      }, 3000)
+    }
+  })
 }
 
 /**
@@ -212,21 +209,21 @@ async function deleteDatabase(dbName: string): Promise<void> {
  */
 async function isVersionAlreadyApplied(version: string): Promise<boolean> {
   try {
-    const appliedVersion = localStorage.getItem(SEED_VERSION_KEY);
+    const appliedVersion = localStorage.getItem(SEED_VERSION_KEY)
     if (appliedVersion !== version) {
-      return false;
+      return false
     }
 
     // localStorage indicates version was applied, but we need to verify the database actually exists
-    const fakeDbConfig = getFakeDbConfig();
-    const dbName = fakeDbConfig?.dbName || 'BackChannelDB';
+    const fakeDbConfig = getFakeDbConfig()
+    const dbName = fakeDbConfig?.dbName || 'BackChannelDB'
 
     // Check if database exists
-    const dbExists = await databaseExists(dbName);
+    const dbExists = await databaseExists(dbName)
     if (!dbExists) {
       // Clear the stale localStorage entry
-      localStorage.removeItem(SEED_VERSION_KEY);
-      return false;
+      localStorage.removeItem(SEED_VERSION_KEY)
+      return false
     }
 
     // Database exists, but let's verify it actually contains the expected data
@@ -235,29 +232,29 @@ async function isVersionAlreadyApplied(version: string): Promise<boolean> {
         undefined,
         dbName,
         fakeDbConfig?.dbVersion || 1
-      );
-      await dbService.initialize();
+      )
+      await dbService.initialize()
 
-      const metadata = await dbService.getMetadata();
-      const comments = await dbService.getComments();
+      const metadata = await dbService.getMetadata()
+      const comments = await dbService.getComments()
 
-      const hasData = metadata !== null && comments.length > 0;
+      const hasData = metadata !== null && comments.length > 0
 
       if (!hasData) {
-        localStorage.removeItem(SEED_VERSION_KEY);
-        return false;
+        localStorage.removeItem(SEED_VERSION_KEY)
+        return false
       }
 
-      return true;
+      return true
     } catch (error) {
-      console.warn('Failed to verify database contents:', error);
+      console.warn('Failed to verify database contents:', error)
       // If we can't verify, assume we need to re-seed
-      localStorage.removeItem(SEED_VERSION_KEY);
-      return false;
+      localStorage.removeItem(SEED_VERSION_KEY)
+      return false
     }
   } catch (error) {
-    console.warn('Failed to check applied seed version:', error);
-    return false;
+    console.warn('Failed to check applied seed version:', error)
+    return false
   }
 }
 
@@ -267,9 +264,9 @@ async function isVersionAlreadyApplied(version: string): Promise<boolean> {
  */
 function markVersionAsApplied(version: string): void {
   try {
-    localStorage.setItem(SEED_VERSION_KEY, version);
+    localStorage.setItem(SEED_VERSION_KEY, version)
   } catch (error) {
-    console.warn('Failed to mark seed version as applied:', error);
+    console.warn('Failed to mark seed version as applied:', error)
   }
 }
 
@@ -280,69 +277,69 @@ function markVersionAsApplied(version: string): void {
  */
 export async function seedDemoDatabaseIfNeeded(): Promise<boolean> {
   // Step 1: Check if demo seed is available
-  const demoSeed = getDemoSeed();
+  const demoSeed = getDemoSeed()
   if (!demoSeed) {
-    return false;
+    return false
   }
 
   // Step 2: Check if version is already applied (with database verification)
   if (await isVersionAlreadyApplied(demoSeed.version)) {
     console.log(
       `Demo seed version ${demoSeed.version} already applied and verified, skipping seeding`
-    );
-    return false;
+    )
+    return false
   }
 
   try {
     // Step 3: Get database configuration
-    const fakeDbConfig = getFakeDbConfig();
-    const dbName = fakeDbConfig?.dbName || 'BackChannelDB';
-    const dbVersion = fakeDbConfig?.dbVersion || 1;
+    const fakeDbConfig = getFakeDbConfig()
+    const dbName = fakeDbConfig?.dbName || 'BackChannelDB'
+    const dbVersion = fakeDbConfig?.dbVersion || 1
 
     // Step 4: Delete existing database (only if it exists)
     if (await databaseExists(dbName)) {
       try {
-        await deleteDatabase(dbName);
+        await deleteDatabase(dbName)
       } catch (error) {
-        console.warn('Database deletion failed:', error);
+        console.warn('Database deletion failed:', error)
         // Try to continue anyway
       }
     }
 
     // Step 5: Create fresh database service
-    const dbService = new DatabaseService(undefined, dbName, dbVersion);
-    await dbService.initialize();
+    const dbService = new DatabaseService(undefined, dbName, dbVersion)
+    await dbService.initialize()
 
     // Step 6: Seed metadata
-    await dbService.setMetadata(demoSeed.metadata);
+    await dbService.setMetadata(demoSeed.metadata)
 
     // Verify metadata was actually saved
-    const savedMetadata = await dbService.getMetadata();
+    const savedMetadata = await dbService.getMetadata()
     if (!savedMetadata) {
-      console.error('ERROR: Metadata was not saved to database!');
+      console.error('ERROR: Metadata was not saved to database!')
     }
 
     // Step 7: Seed comments
     for (const comment of demoSeed.comments) {
-      await dbService.addComment(comment);
+      await dbService.addComment(comment)
     }
 
     // Verify comments were actually saved
-    const savedComments = await dbService.getComments();
+    const savedComments = await dbService.getComments()
     if (savedComments.length !== demoSeed.comments.length) {
       console.error('ERROR: Comment count mismatch!', {
         expected: demoSeed.comments.length,
         actual: savedComments.length,
-      });
+      })
     }
 
     // Step 8: Mark version as applied
-    markVersionAsApplied(demoSeed.version);
+    markVersionAsApplied(demoSeed.version)
 
-    return true;
+    return true
   } catch (error) {
-    console.error('Failed to seed demo database:', error);
-    return false;
+    console.error('Failed to seed demo database:', error)
+    return false
   }
 }
 
@@ -353,13 +350,13 @@ export async function seedDemoDatabaseIfNeeded(): Promise<boolean> {
 export async function forceReseedDemoDatabase(): Promise<boolean> {
   // Clear the version flag
   try {
-    localStorage.removeItem(SEED_VERSION_KEY);
+    localStorage.removeItem(SEED_VERSION_KEY)
   } catch (error) {
-    console.warn('Failed to clear seed version flag:', error);
+    console.warn('Failed to clear seed version flag:', error)
   }
 
   // Perform seeding
-  return await seedDemoDatabaseIfNeeded();
+  return await seedDemoDatabaseIfNeeded()
 }
 
 /**
@@ -368,10 +365,10 @@ export async function forceReseedDemoDatabase(): Promise<boolean> {
  */
 export function getCurrentSeedVersion(): string | null {
   try {
-    return localStorage.getItem(SEED_VERSION_KEY);
+    return localStorage.getItem(SEED_VERSION_KEY)
   } catch (error) {
-    console.warn('Failed to get current seed version:', error);
-    return null;
+    console.warn('Failed to get current seed version:', error)
+    return null
   }
 }
 
@@ -381,15 +378,15 @@ export function getCurrentSeedVersion(): string | null {
  */
 export function clearSeedVersion(): void {
   try {
-    localStorage.removeItem(SEED_VERSION_KEY);
+    localStorage.removeItem(SEED_VERSION_KEY)
   } catch (error) {
-    console.warn('Failed to clear seed version flag:', error);
+    console.warn('Failed to clear seed version flag:', error)
   }
 }
 
 // Extend global window interface for TypeScript
 declare global {
   interface Window {
-    demoDatabaseSeed?: DemoDatabaseSeed;
+    demoDatabaseSeed?: DemoDatabaseSeed
   }
 }

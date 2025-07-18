@@ -4,21 +4,21 @@
  * @author BackChannel Team
  */
 
-import { LitElement, html, css, TemplateResult } from 'lit';
-import { customElement, property, state, query } from 'lit/decorators.js';
-import { DocumentMetadata } from '../types';
-import { DatabaseService } from '../services/DatabaseService';
+import { LitElement, html, css, TemplateResult } from 'lit'
+import { customElement, property, state, query } from 'lit/decorators.js'
+import { DocumentMetadata } from '../types'
+import { DatabaseService } from '../services/DatabaseService'
 
 export interface PackageCreationForm {
-  documentTitle: string;
-  reviewerName: string;
-  urlPrefix: string;
+  documentTitle: string
+  reviewerName: string
+  urlPrefix: string
 }
 
 export interface PackageCreationModalOptions {
-  onSuccess?: (metadata: DocumentMetadata) => void;
-  onCancel?: () => void;
-  onError?: (error: Error) => void;
+  onSuccess?: (metadata: DocumentMetadata) => void
+  onCancel?: () => void
+  onError?: (error: Error) => void
 }
 
 /**
@@ -27,25 +27,25 @@ export interface PackageCreationModalOptions {
 @customElement('package-creation-modal')
 export class PackageCreationModal extends LitElement {
   @property({ type: Object })
-  databaseService!: DatabaseService;
+  databaseService!: DatabaseService
 
   @property({ type: Object })
-  options: PackageCreationModalOptions = {};
+  options: PackageCreationModalOptions = {}
 
   @state()
-  private isVisible = false;
+  private isVisible = false
 
   @state()
-  private hasUnsavedChanges = false;
+  private hasUnsavedChanges = false
 
   @state()
-  private isLoading = false;
+  private isLoading = false
 
   @state()
-  private formErrors: Record<string, string> = {};
+  private formErrors: Record<string, string> = {}
 
   @query('form')
-  private form!: HTMLFormElement;
+  private form!: HTMLFormElement
 
   static styles = css`
     :host {
@@ -365,25 +365,25 @@ export class PackageCreationModal extends LitElement {
         animation: none;
       }
     }
-  `;
+  `
 
   connectedCallback() {
-    super.connectedCallback();
-    document.addEventListener('keydown', this.handleKeydown);
+    super.connectedCallback()
+    document.addEventListener('keydown', this.handleKeydown)
   }
 
   disconnectedCallback() {
-    super.disconnectedCallback();
-    document.removeEventListener('keydown', this.handleKeydown);
-    this.restoreBodyScroll();
+    super.disconnectedCallback()
+    document.removeEventListener('keydown', this.handleKeydown)
+    this.restoreBodyScroll()
   }
 
   render(): TemplateResult {
     if (!this.isVisible) {
-      return html``;
+      return html``
     }
 
-    const urlPrefix = this.getDefaultUrlPrefix();
+    const urlPrefix = this.getDefaultUrlPrefix()
 
     return html`
       <div
@@ -578,7 +578,7 @@ export class PackageCreationModal extends LitElement {
           </div>
         </div>
       </div>
-    `;
+    `
   }
 
   /**
@@ -586,100 +586,100 @@ export class PackageCreationModal extends LitElement {
    */
   private getDefaultUrlPrefix(): string {
     if (typeof window !== 'undefined' && window.location) {
-      const url = new URL(window.location.href);
+      const url = new URL(window.location.href)
       const pathSegments = url.pathname
         .split('/')
-        .filter(segment => segment.length > 0);
+        .filter(segment => segment.length > 0)
 
       if (pathSegments.length > 0) {
         // Remove the last segment (current file) to get parent folder
-        pathSegments.pop();
+        pathSegments.pop()
         const parentPath =
-          pathSegments.length > 0 ? '/' + pathSegments.join('/') + '/' : '/';
-        return `${url.protocol}//${url.hostname}${url.port ? ':' + url.port : ''}${parentPath}`;
+          pathSegments.length > 0 ? '/' + pathSegments.join('/') + '/' : '/'
+        return `${url.protocol}//${url.hostname}${url.port ? ':' + url.port : ''}${parentPath}`
       }
 
-      return `${url.protocol}//${url.hostname}${url.port ? ':' + url.port : ''}/`;
+      return `${url.protocol}//${url.hostname}${url.port ? ':' + url.port : ''}/`
     }
-    return 'file://';
+    return 'file://'
   }
 
   /**
    * Handle input events for real-time validation
    */
   private handleInput = (e: Event): void => {
-    const input = e.target as HTMLInputElement;
-    this.markAsModified();
-    this.validateField(input);
-  };
+    const input = e.target as HTMLInputElement
+    this.markAsModified()
+    this.validateField(input)
+  }
 
   /**
    * Handle blur events for validation
    */
   private handleBlur = (e: Event): void => {
-    const input = e.target as HTMLInputElement;
-    this.validateField(input);
-  };
+    const input = e.target as HTMLInputElement
+    this.validateField(input)
+  }
 
   /**
    * Handle backdrop click
    */
   private handleBackdropClick = (e: Event): void => {
     if (e.target === e.currentTarget) {
-      this.handleClose();
+      this.handleClose()
     }
-  };
+  }
 
   /**
    * Handle keyboard events
    */
   private handleKeydown = (e: KeyboardEvent): void => {
-    if (!this.isVisible) return;
+    if (!this.isVisible) return
 
     if (e.key === 'Escape') {
-      e.preventDefault();
-      this.handleClose();
+      e.preventDefault()
+      this.handleClose()
     }
-  };
+  }
 
   /**
    * Handle form submission
    */
   private handleSubmit = async (e: Event): Promise<void> => {
-    e.preventDefault();
+    e.preventDefault()
 
     if (!this.validateForm()) {
-      return;
+      return
     }
 
-    const formData = new FormData(this.form);
+    const formData = new FormData(this.form)
     const packageData: PackageCreationForm = {
       documentTitle: formData.get('documentTitle') as string,
       reviewerName: formData.get('reviewerName') as string,
       urlPrefix: formData.get('urlPrefix') as string,
-    };
+    }
 
     try {
-      this.isLoading = true;
+      this.isLoading = true
 
       const metadata: DocumentMetadata = {
         documentTitle: packageData.documentTitle.trim(),
         documentRootUrl: packageData.urlPrefix.trim(),
         reviewer: packageData.reviewerName.trim(),
         documentId: this.generateDocumentId(),
-      };
+      }
 
-      await this.databaseService.setMetadata(metadata);
+      await this.databaseService.setMetadata(metadata)
 
-      this.options.onSuccess?.(metadata);
-      this.close();
+      this.options.onSuccess?.(metadata)
+      this.close()
     } catch (error) {
-      console.error('Failed to create feedback package:', error);
-      this.options.onError?.(error as Error);
+      console.error('Failed to create feedback package:', error)
+      this.options.onError?.(error as Error)
     } finally {
-      this.isLoading = false;
+      this.isLoading = false
     }
-  };
+  }
 
   /**
    * Handle modal close
@@ -688,36 +688,36 @@ export class PackageCreationModal extends LitElement {
     if (this.hasUnsavedChanges) {
       const confirmed = confirm(
         'You have unsaved changes. Are you sure you want to close?'
-      );
+      )
       if (!confirmed) {
-        return;
+        return
       }
     }
 
-    this.options.onCancel?.();
-    this.close();
-  };
+    this.options.onCancel?.()
+    this.close()
+  }
 
   /**
    * Mark form as modified
    */
   private markAsModified(): void {
-    this.hasUnsavedChanges = true;
+    this.hasUnsavedChanges = true
   }
 
   /**
    * Validate a specific form field
    */
   private validateField(input: HTMLInputElement): boolean {
-    let isValid = true;
-    let errorMessage = '';
+    let isValid = true
+    let errorMessage = ''
 
-    const fieldName = input.name;
+    const fieldName = input.name
 
     // Required field validation
     if (input.required && !input.value.trim()) {
-      isValid = false;
-      errorMessage = `${input.labels?.[0]?.textContent?.replace(' *', '') || 'This field'} is required`;
+      isValid = false
+      errorMessage = `${input.labels?.[0]?.textContent?.replace(' *', '') || 'This field'} is required`
     }
 
     // Length validation
@@ -725,30 +725,30 @@ export class PackageCreationModal extends LitElement {
       input.maxLength > 0 &&
       input.value.trim().length > input.maxLength
     ) {
-      isValid = false;
-      errorMessage = `Maximum ${input.maxLength} characters allowed`;
+      isValid = false
+      errorMessage = `Maximum ${input.maxLength} characters allowed`
     }
 
     // URL prefix validation
     else if (input.name === 'urlPrefix' && input.value.trim()) {
       try {
-        new URL(input.value.trim());
+        new URL(input.value.trim())
       } catch {
-        isValid = false;
-        errorMessage = 'Please enter a valid URL';
+        isValid = false
+        errorMessage = 'Please enter a valid URL'
       }
     }
 
     // Update form errors
     if (!isValid) {
-      this.formErrors = { ...this.formErrors, [fieldName]: errorMessage };
+      this.formErrors = { ...this.formErrors, [fieldName]: errorMessage }
     } else {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { [fieldName]: _, ...restErrors } = this.formErrors;
-      this.formErrors = restErrors;
+      const { [fieldName]: _, ...restErrors } = this.formErrors
+      this.formErrors = restErrors
     }
 
-    return isValid;
+    return isValid
   }
 
   /**
@@ -757,93 +757,93 @@ export class PackageCreationModal extends LitElement {
   private validateForm(): boolean {
     const inputs = this.form.querySelectorAll(
       'input[required]'
-    ) as NodeListOf<HTMLInputElement>;
-    let isValid = true;
+    ) as NodeListOf<HTMLInputElement>
+    let isValid = true
 
     inputs.forEach(input => {
       if (!this.validateField(input)) {
-        isValid = false;
+        isValid = false
       }
-    });
+    })
 
-    return isValid;
+    return isValid
   }
 
   /**
    * Generate a unique document ID
    */
   private generateDocumentId(): string {
-    return `doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
   }
 
   /**
    * Prevent body scroll when modal is open
    */
   private preventBodyScroll(): void {
-    document.body.style.overflow = 'hidden';
-    document.body.classList.add('backchannel-modal-open');
+    document.body.style.overflow = 'hidden'
+    document.body.classList.add('backchannel-modal-open')
   }
 
   /**
    * Restore body scroll when modal is closed
    */
   private restoreBodyScroll(): void {
-    document.body.style.overflow = '';
-    document.body.classList.remove('backchannel-modal-open');
+    document.body.style.overflow = ''
+    document.body.classList.remove('backchannel-modal-open')
   }
 
   /**
    * Show the modal
    */
   show(): void {
-    if (this.isVisible) return;
+    if (this.isVisible) return
 
-    this.isVisible = true;
-    this.hasUnsavedChanges = false;
-    this.formErrors = {};
-    this.setAttribute('visible', '');
+    this.isVisible = true
+    this.hasUnsavedChanges = false
+    this.formErrors = {}
+    this.setAttribute('visible', '')
 
-    this.preventBodyScroll();
+    this.preventBodyScroll()
 
     // Focus on first input after render
     this.updateComplete.then(() => {
       const firstInput = this.shadowRoot?.querySelector(
         'input'
-      ) as HTMLInputElement;
-      setTimeout(() => firstInput?.focus(), 100);
-    });
+      ) as HTMLInputElement
+      setTimeout(() => firstInput?.focus(), 100)
+    })
   }
 
   /**
    * Hide the modal
    */
   close(): void {
-    if (!this.isVisible) return;
+    if (!this.isVisible) return
 
-    this.isVisible = false;
-    this.hasUnsavedChanges = false;
-    this.formErrors = {};
-    this.removeAttribute('visible');
+    this.isVisible = false
+    this.hasUnsavedChanges = false
+    this.formErrors = {}
+    this.removeAttribute('visible')
 
-    this.restoreBodyScroll();
+    this.restoreBodyScroll()
 
     // Reset form
     this.updateComplete.then(() => {
-      this.form?.reset();
+      this.form?.reset()
       // Reset URL prefix to default
       const urlPrefixInput = this.shadowRoot?.querySelector(
         '#url-prefix'
-      ) as HTMLInputElement;
+      ) as HTMLInputElement
       if (urlPrefixInput) {
-        urlPrefixInput.value = this.getDefaultUrlPrefix();
+        urlPrefixInput.value = this.getDefaultUrlPrefix()
       }
-    });
+    })
   }
 
   /**
    * Get current visibility state
    */
   isOpen(): boolean {
-    return this.isVisible;
+    return this.isVisible
   }
 }

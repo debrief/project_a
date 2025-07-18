@@ -4,11 +4,11 @@
  * @author BackChannel Team
  */
 
-import { LitElement, html, css, TemplateResult } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
-import { BackChannelIconAPI, FeedbackState } from '../types';
-import type { IBackChannelPlugin } from '../types';
-import { PackageCreationModal } from './PackageCreationModal';
+import { LitElement, html, css, TemplateResult } from 'lit'
+import { customElement, property, state } from 'lit/decorators.js'
+import { BackChannelIconAPI, FeedbackState } from '../types'
+import type { IBackChannelPlugin } from '../types'
+import { PackageCreationModal } from './PackageCreationModal'
 
 /**
  * BackChannel Icon Component
@@ -17,19 +17,19 @@ import { PackageCreationModal } from './PackageCreationModal';
 @customElement('backchannel-icon')
 export class BackChannelIcon extends LitElement implements BackChannelIconAPI {
   @property({ type: Object })
-  backChannelPlugin!: IBackChannelPlugin;
+  backChannelPlugin!: IBackChannelPlugin
 
   @property({ type: String })
-  state: FeedbackState = FeedbackState.INACTIVE;
+  state: FeedbackState = FeedbackState.INACTIVE
 
   @property({ type: Boolean })
-  enabled: boolean = false;
+  enabled: boolean = false
 
   @property()
-  clickHandler?: () => void;
+  clickHandler?: () => void
 
   @state()
-  private packageModal: PackageCreationModal | null = null;
+  private packageModal: PackageCreationModal | null = null
 
   static styles = css`
     :host {
@@ -191,30 +191,30 @@ export class BackChannelIcon extends LitElement implements BackChannelIconAPI {
         display: none;
       }
     }
-  `;
+  `
 
   connectedCallback() {
-    super.connectedCallback();
-    this.setAttribute('role', 'button');
-    this.setAttribute('tabindex', '0');
-    this.setAttribute('id', 'backchannel-icon');
-    this.setAttribute('state', this.state);
-    this.setAttribute('enabled', this.enabled.toString());
-    this.updateTitle();
+    super.connectedCallback()
+    this.setAttribute('role', 'button')
+    this.setAttribute('tabindex', '0')
+    this.setAttribute('id', 'backchannel-icon')
+    this.setAttribute('state', this.state)
+    this.setAttribute('enabled', this.enabled.toString())
+    this.updateTitle()
     // The modal is now initialized lazily when the icon is clicked
 
     // Add event listeners to the host element
-    this.addEventListener('click', this.handleClick);
-    this.addEventListener('keydown', this.handleKeydown);
+    this.addEventListener('click', this.handleClick)
+    this.addEventListener('keydown', this.handleKeydown)
   }
 
   disconnectedCallback() {
-    super.disconnectedCallback();
-    this.cleanupModal();
+    super.disconnectedCallback()
+    this.cleanupModal()
 
     // Remove event listeners
-    this.removeEventListener('click', this.handleClick);
-    this.removeEventListener('keydown', this.handleKeydown);
+    this.removeEventListener('click', this.handleClick)
+    this.removeEventListener('keydown', this.handleKeydown)
   }
 
   render(): TemplateResult {
@@ -252,40 +252,40 @@ export class BackChannelIcon extends LitElement implements BackChannelIconAPI {
           class="backchannel-icon-badge"
         />
       </svg>
-    `;
+    `
   }
 
   /**
    * Initialize the package creation modal
    */
   private async initializeModal(): Promise<void> {
-    if (!this.backChannelPlugin) return;
+    if (!this.backChannelPlugin) return
 
     // Lazily get the database service only when the modal is needed
-    const dbService = await this.backChannelPlugin.getDatabaseService();
+    const dbService = await this.backChannelPlugin.getDatabaseService()
 
-    this.packageModal = new PackageCreationModal();
-    this.packageModal.databaseService = dbService;
+    this.packageModal = new PackageCreationModal()
+    this.packageModal.databaseService = dbService
     this.packageModal.options = {
       onSuccess: () => {
         // Enable BackChannel and set to capture mode
-        this.setEnabled(true);
-        this.setState(FeedbackState.CAPTURE);
+        this.setEnabled(true)
+        this.setState(FeedbackState.CAPTURE)
 
         // Notify the main plugin that BackChannel is now enabled
         if (typeof window !== 'undefined' && window.BackChannel) {
-          window.BackChannel.enableBackChannel();
+          window.BackChannel.enableBackChannel()
         }
       },
       onCancel: () => {},
       onError: error => {
-        console.error('Package creation failed:', error);
-        alert('Failed to create feedback package. Please try again.');
+        console.error('Package creation failed:', error)
+        alert('Failed to create feedback package. Please try again.')
       },
-    };
+    }
 
     // Add modal to DOM
-    document.body.appendChild(this.packageModal);
+    document.body.appendChild(this.packageModal)
   }
 
   /**
@@ -293,7 +293,7 @@ export class BackChannelIcon extends LitElement implements BackChannelIconAPI {
    */
   private cleanupModal(): void {
     if (this.packageModal && this.packageModal.parentNode) {
-      this.packageModal.parentNode.removeChild(this.packageModal);
+      this.packageModal.parentNode.removeChild(this.packageModal)
     }
   }
 
@@ -301,52 +301,52 @@ export class BackChannelIcon extends LitElement implements BackChannelIconAPI {
    * Set the icon state and update visual appearance
    */
   setState(newState: FeedbackState): void {
-    this.state = newState;
-    this.setAttribute('state', newState);
-    this.updateTitle();
-    this.requestUpdate();
+    this.state = newState
+    this.setAttribute('state', newState)
+    this.updateTitle()
+    this.requestUpdate()
   }
 
   /**
    * Set the enabled state and update visual appearance
    */
   setEnabled(isEnabled: boolean): void {
-    this.enabled = isEnabled;
-    this.setAttribute('enabled', isEnabled.toString());
-    this.updateTitle();
-    this.requestUpdate();
+    this.enabled = isEnabled
+    this.setAttribute('enabled', isEnabled.toString())
+    this.updateTitle()
+    this.requestUpdate()
   }
 
   /**
    * Update the icon's title based on state
    */
   private updateTitle(): void {
-    let title = 'BackChannel Feedback';
+    let title = 'BackChannel Feedback'
 
     if (!this.enabled) {
-      title = 'BackChannel Feedback - Click to create feedback package';
+      title = 'BackChannel Feedback - Click to create feedback package'
     } else {
       switch (this.state) {
         case FeedbackState.INACTIVE:
-          title = 'BackChannel Feedback - Click to activate';
-          break;
+          title = 'BackChannel Feedback - Click to activate'
+          break
         case FeedbackState.CAPTURE:
-          title = 'BackChannel Feedback - Capture Mode Active';
-          break;
+          title = 'BackChannel Feedback - Capture Mode Active'
+          break
         case FeedbackState.REVIEW:
-          title = 'BackChannel Feedback - Review Mode Active';
-          break;
+          title = 'BackChannel Feedback - Review Mode Active'
+          break
       }
     }
 
-    this.setAttribute('title', title);
+    this.setAttribute('title', title)
   }
 
   /**
    * Set click handler for the icon
    */
   setClickHandler(handler: () => void): void {
-    this.clickHandler = handler;
+    this.clickHandler = handler
   }
 
   /**
@@ -357,33 +357,33 @@ export class BackChannelIcon extends LitElement implements BackChannelIconAPI {
     if (!this.enabled) {
       // Initialize the modal just-in-time
       if (!this.packageModal) {
-        await this.initializeModal();
+        await this.initializeModal()
       }
-      this.openPackageModal();
-      return;
+      this.openPackageModal()
+      return
     }
 
     // If enabled, defer to the main plugin's click handler for state changes
     if (this.clickHandler) {
-      this.clickHandler();
+      this.clickHandler()
     }
-  };
+  }
 
   /**
    * Handle keyboard events for accessibility
    */
   private handleKeydown = (event: KeyboardEvent): void => {
     if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      this.handleClick();
+      event.preventDefault()
+      this.handleClick()
     }
-  };
+  }
 
   /**
    * Get the current state
    */
   getState(): FeedbackState {
-    return this.state;
+    return this.state
   }
 
   /**
@@ -391,7 +391,7 @@ export class BackChannelIcon extends LitElement implements BackChannelIconAPI {
    */
   openPackageModal(): void {
     if (this.packageModal) {
-      this.packageModal.show();
+      this.packageModal.show()
     }
   }
 }

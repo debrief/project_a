@@ -10,15 +10,15 @@ import {
   StorageInterface,
   isCaptureComment,
   FakeDbStore,
-} from '../types';
+} from '../types'
 
 /**
  * Database configuration constants
  */
-const DEFAULT_DB_NAME = 'BackChannelDB';
-const DEFAULT_DB_VERSION = 1;
-const COMMENTS_STORE = 'comments';
-const METADATA_STORE = 'metadata';
+const DEFAULT_DB_NAME = 'BackChannelDB'
+const DEFAULT_DB_VERSION = 1
+const COMMENTS_STORE = 'comments'
+const METADATA_STORE = 'metadata'
 
 /**
  * localStorage keys for caching
@@ -28,18 +28,18 @@ const CACHE_KEYS = {
   DOCUMENT_URL_ROOT: 'backchannel-url-root',
   ENABLED_STATE: 'backchannel-enabled-state',
   LAST_URL_CHECK: 'backchannel-last-url-check',
-} as const;
+} as const
 
 /**
  * DatabaseService provides IndexedDB operations for BackChannel feedback data
  * Implements minimal localStorage caching for performance optimization
  */
 export class DatabaseService implements StorageInterface {
-  private db: IDBDatabase | null = null;
-  private readonly fakeIndexedDb?: IDBFactory;
-  private isInitialized = false;
-  private readonly dbName: string;
-  private readonly dbVersion: number;
+  private db: IDBDatabase | null = null
+  private readonly fakeIndexedDb?: IDBFactory
+  private isInitialized = false
+  private readonly dbName: string
+  private readonly dbVersion: number
 
   /**
    * Creates a new DatabaseService instance with optional configuration
@@ -48,9 +48,9 @@ export class DatabaseService implements StorageInterface {
    * @param dbVersion Optional database version (defaults to 1)
    */
   constructor(fakeIndexedDb?: IDBFactory, dbName?: string, dbVersion?: number) {
-    this.fakeIndexedDb = fakeIndexedDb;
-    this.dbName = dbName || DEFAULT_DB_NAME;
-    this.dbVersion = dbVersion || DEFAULT_DB_VERSION;
+    this.fakeIndexedDb = fakeIndexedDb
+    this.dbName = dbName || DEFAULT_DB_NAME
+    this.dbVersion = dbVersion || DEFAULT_DB_VERSION
   }
 
   /**
@@ -59,12 +59,12 @@ export class DatabaseService implements StorageInterface {
    * @returns Promise<boolean> - true if a matching feedback package exists, false otherwise
    */
   static async hasExistingFeedbackPackage(): Promise<boolean> {
-    const currentUrl = DatabaseService.getCurrentPageUrl();
+    const currentUrl = DatabaseService.getCurrentPageUrl()
 
     // Check if there's a seed database in the window object AND if current URL matches
     if (typeof window !== 'undefined') {
       const fakeData = (window as unknown as { fakeData?: FakeDbStore })
-        .fakeData;
+        .fakeData
       if (fakeData && fakeData.databases && fakeData.databases.length > 0) {
         // Check if any of the seed data matches the current URL
         for (const db of fakeData.databases) {
@@ -79,7 +79,7 @@ export class DatabaseService implements StorageInterface {
                       metadata.documentRootUrl
                     )
                   ) {
-                    return true;
+                    return true
                   }
                 }
               }
@@ -92,12 +92,12 @@ export class DatabaseService implements StorageInterface {
     // Check existing databases using indexedDB.databases() to avoid creating empty databases
     if (typeof indexedDB.databases === 'function') {
       try {
-        const existingDbs = await indexedDB.databases();
+        const existingDbs = await indexedDB.databases()
         const targetDbNames = [
           DEFAULT_DB_NAME,
           'BackChannelDB-Demo',
           'BackChannelDB-EnabledTest',
-        ];
+        ]
 
         for (const dbInfo of existingDbs) {
           if (targetDbNames.includes(dbInfo.name)) {
@@ -106,24 +106,24 @@ export class DatabaseService implements StorageInterface {
                 await DatabaseService.checkDatabaseForUrlMatch(
                   dbInfo.name,
                   currentUrl
-                );
+                )
               if (hasMatchingPackage) {
-                return true;
+                return true
               }
             } catch (error) {
-              console.warn(`Failed to check database ${dbInfo.name}:`, error);
+              console.warn(`Failed to check database ${dbInfo.name}:`, error)
               // Continue checking other databases
             }
           }
         }
       } catch (error) {
-        console.warn('Failed to get existing databases:', error);
+        console.warn('Failed to get existing databases:', error)
       }
     } else {
       // Fallback for browsers that don't support indexedDB.databases()
     }
 
-    return false;
+    return false
   }
 
   /**
@@ -131,9 +131,9 @@ export class DatabaseService implements StorageInterface {
    */
   private static getCurrentPageUrl(): string {
     if (typeof window !== 'undefined' && window.location) {
-      return window.location.href;
+      return window.location.href
     }
-    return '';
+    return ''
   }
 
   /**
@@ -147,40 +147,40 @@ export class DatabaseService implements StorageInterface {
     try {
       // Use indexedDB.databases() if available to check if database exists without creating it
       if (typeof indexedDB.databases === 'function') {
-        const existingDbs = await indexedDB.databases();
-        const dbExists = existingDbs.some(db => db.name === dbName);
+        const existingDbs = await indexedDB.databases()
+        const dbExists = existingDbs.some(db => db.name === dbName)
 
         if (!dbExists) {
-          return false;
+          return false
         }
       }
 
       // If we can't check without opening, or if database exists, proceed with opening
       return new Promise(resolve => {
-        const request = indexedDB.open(dbName);
+        const request = indexedDB.open(dbName)
 
         request.onerror = () => {
           // Database doesn't exist or can't be opened
-          resolve(false);
-        };
+          resolve(false)
+        }
 
         request.onsuccess = () => {
-          const db = request.result;
+          const db = request.result
 
           try {
             // Check if metadata store exists
             if (!db.objectStoreNames.contains(METADATA_STORE)) {
-              db.close();
-              resolve(false);
-              return;
+              db.close()
+              resolve(false)
+              return
             }
 
-            const transaction = db.transaction([METADATA_STORE], 'readonly');
-            const store = transaction.objectStore(METADATA_STORE);
-            const getAllRequest = store.getAll();
+            const transaction = db.transaction([METADATA_STORE], 'readonly')
+            const store = transaction.objectStore(METADATA_STORE)
+            const getAllRequest = store.getAll()
 
             getAllRequest.onsuccess = () => {
-              const allMetadata = getAllRequest.result || [];
+              const allMetadata = getAllRequest.result || []
 
               // Check if any metadata entry has a URL root that matches the current URL
               for (const metadata of allMetadata) {
@@ -190,32 +190,32 @@ export class DatabaseService implements StorageInterface {
                     metadata.documentRootUrl
                   )
                 ) {
-                  db.close();
-                  resolve(true);
-                  return;
+                  db.close()
+                  resolve(true)
+                  return
                 }
               }
 
-              db.close();
-              resolve(false);
-            };
+              db.close()
+              resolve(false)
+            }
 
             getAllRequest.onerror = () => {
-              db.close();
-              resolve(false);
-            };
+              db.close()
+              resolve(false)
+            }
           } catch {
-            db.close();
-            resolve(false);
+            db.close()
+            resolve(false)
           }
-        };
+        }
 
         // Add timeout to prevent hanging
-        setTimeout(() => resolve(false), 5000);
-      });
+        setTimeout(() => resolve(false), 5000)
+      })
     } catch (error) {
-      console.warn(`Error checking database ${dbName}:`, error);
-      return false;
+      console.warn(`Error checking database ${dbName}:`, error)
+      return false
     }
   }
 
@@ -229,34 +229,34 @@ export class DatabaseService implements StorageInterface {
     try {
       // Handle special case for file:// protocol patterns
       if (documentRootUrl === 'file://' || documentRootUrl === 'file:///') {
-        return currentUrl.startsWith('file://');
+        return currentUrl.startsWith('file://')
       }
 
       // Handle cases where documentRootUrl might be a simple path
-      let patternPath: string;
+      let patternPath: string
       if (
         documentRootUrl.startsWith('http://') ||
         documentRootUrl.startsWith('https://') ||
         documentRootUrl.startsWith('file://')
       ) {
         // Full URL - extract just the path
-        const patternUrl = new URL(documentRootUrl);
-        patternPath = patternUrl.pathname;
+        const patternUrl = new URL(documentRootUrl)
+        patternPath = patternUrl.pathname
       } else {
         // Assume it's already a path
-        patternPath = documentRootUrl;
+        patternPath = documentRootUrl
       }
 
       // Get current URL path
-      const currentUrlObj = new URL(currentUrl);
-      const currentPath = currentUrlObj.pathname;
+      const currentUrlObj = new URL(currentUrl)
+      const currentPath = currentUrlObj.pathname
 
       // Check if current path starts with the pattern path
-      return currentPath.startsWith(patternPath);
+      return currentPath.startsWith(patternPath)
     } catch (error) {
-      console.warn('URL parsing error in static urlPathMatches:', error);
+      console.warn('URL parsing error in static urlPathMatches:', error)
       // Fallback to simple string containment
-      return currentUrl.includes(documentRootUrl);
+      return currentUrl.includes(documentRootUrl)
     }
   }
 
@@ -266,16 +266,16 @@ export class DatabaseService implements StorageInterface {
    */
   async initialize(): Promise<void> {
     if (this.isInitialized && this.db) {
-      return;
+      return
     }
 
     try {
-      this.db = await this.openDatabase();
-      this.isInitialized = true;
-      this.cacheBasicInfo();
+      this.db = await this.openDatabase()
+      this.isInitialized = true
+      this.cacheBasicInfo()
     } catch (error) {
-      console.error('Failed to initialize DatabaseService:', error);
-      throw error;
+      console.error('Failed to initialize DatabaseService:', error)
+      throw error
     }
   }
 
@@ -284,29 +284,29 @@ export class DatabaseService implements StorageInterface {
    */
   private openDatabase(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
-      const indexedDB = this.fakeIndexedDb || window.indexedDB;
+      const indexedDB = this.fakeIndexedDb || window.indexedDB
 
       if (!indexedDB) {
-        reject(new Error('IndexedDB not supported'));
-        return;
+        reject(new Error('IndexedDB not supported'))
+        return
       }
 
-      const request = indexedDB.open(this.dbName, this.dbVersion);
+      const request = indexedDB.open(this.dbName, this.dbVersion)
 
       request.onerror = () => {
-        console.error('Database open error:', request.error);
-        reject(request.error);
-      };
+        console.error('Database open error:', request.error)
+        reject(request.error)
+      }
 
       request.onsuccess = () => {
-        resolve(request.result);
-      };
+        resolve(request.result)
+      }
 
       request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
-        const db = (event.target as IDBOpenDBRequest).result;
-        this.setupDatabase(db);
-      };
-    });
+        const db = (event.target as IDBOpenDBRequest).result
+        this.setupDatabase(db)
+      }
+    })
   }
 
   /**
@@ -317,14 +317,14 @@ export class DatabaseService implements StorageInterface {
     if (!db.objectStoreNames.contains(METADATA_STORE)) {
       db.createObjectStore(METADATA_STORE, {
         keyPath: 'documentRootUrl',
-      });
+      })
     }
 
     // Create comments store
     if (!db.objectStoreNames.contains(COMMENTS_STORE)) {
       db.createObjectStore(COMMENTS_STORE, {
         keyPath: 'id',
-      });
+      })
     }
   }
 
@@ -333,10 +333,10 @@ export class DatabaseService implements StorageInterface {
    */
   private cacheBasicInfo(): void {
     try {
-      const dbId = `${this.dbName}_v${this.dbVersion}`;
-      localStorage.setItem(CACHE_KEYS.DATABASE_ID, dbId);
+      const dbId = `${this.dbName}_v${this.dbVersion}`
+      localStorage.setItem(CACHE_KEYS.DATABASE_ID, dbId)
     } catch (error) {
-      console.warn('Failed to cache basic info to localStorage:', error);
+      console.warn('Failed to cache basic info to localStorage:', error)
     }
   }
 
@@ -346,9 +346,9 @@ export class DatabaseService implements StorageInterface {
    */
   private cacheDocumentUrlRoot(documentRootUrl: string): void {
     try {
-      localStorage.setItem(CACHE_KEYS.DOCUMENT_URL_ROOT, documentRootUrl);
+      localStorage.setItem(CACHE_KEYS.DOCUMENT_URL_ROOT, documentRootUrl)
     } catch (error) {
-      console.warn('Failed to cache document root URL to localStorage:', error);
+      console.warn('Failed to cache document root URL to localStorage:', error)
     }
   }
 
@@ -358,24 +358,24 @@ export class DatabaseService implements StorageInterface {
    */
   async getMetadata(): Promise<DocumentMetadata | null> {
     if (!this.db) {
-      throw new Error('Database not initialized');
+      throw new Error('Database not initialized')
     }
 
     return this.executeTransaction(
       [METADATA_STORE],
       'readonly',
       async transaction => {
-        const store = transaction.objectStore(METADATA_STORE);
+        const store = transaction.objectStore(METADATA_STORE)
         return new Promise<DocumentMetadata | null>((resolve, reject) => {
-          const request = store.getAll();
+          const request = store.getAll()
           request.onsuccess = () => {
-            const results = request.result;
-            resolve(results.length > 0 ? results[0] : null);
-          };
-          request.onerror = () => reject(request.error);
-        });
+            const results = request.result
+            resolve(results.length > 0 ? results[0] : null)
+          }
+          request.onerror = () => reject(request.error)
+        })
       }
-    );
+    )
   }
 
   /**
@@ -384,29 +384,29 @@ export class DatabaseService implements StorageInterface {
    */
   async setMetadata(metadata: DocumentMetadata): Promise<void> {
     if (!this.db) {
-      throw new Error('Database not initialized');
+      throw new Error('Database not initialized')
     }
 
     return this.executeTransaction(
       [METADATA_STORE],
       'readwrite',
       async transaction => {
-        const store = transaction.objectStore(METADATA_STORE);
+        const store = transaction.objectStore(METADATA_STORE)
         return new Promise<void>((resolve, reject) => {
-          const request = store.put(metadata);
+          const request = store.put(metadata)
           request.onsuccess = () => {
-            resolve();
-          };
+            resolve()
+          }
           request.onerror = () => {
             console.error(
               'DatabaseService: Metadata put operation failed:',
               request.error
-            );
-            reject(request.error);
-          };
-        });
+            )
+            reject(request.error)
+          }
+        })
       }
-    );
+    )
   }
 
   /**
@@ -415,24 +415,24 @@ export class DatabaseService implements StorageInterface {
    */
   async getComments(): Promise<CaptureComment[]> {
     if (!this.db) {
-      throw new Error('Database not initialized');
+      throw new Error('Database not initialized')
     }
 
     return this.executeTransaction(
       [COMMENTS_STORE],
       'readonly',
       async transaction => {
-        const store = transaction.objectStore(COMMENTS_STORE);
+        const store = transaction.objectStore(COMMENTS_STORE)
         return new Promise<CaptureComment[]>((resolve, reject) => {
-          const request = store.getAll();
+          const request = store.getAll()
           request.onsuccess = () => {
-            const results = request.result || [];
-            resolve(results.filter(isCaptureComment));
-          };
-          request.onerror = () => reject(request.error);
-        });
+            const results = request.result || []
+            resolve(results.filter(isCaptureComment))
+          }
+          request.onerror = () => reject(request.error)
+        })
       }
-    );
+    )
   }
 
   /**
@@ -441,31 +441,31 @@ export class DatabaseService implements StorageInterface {
    */
   async addComment(comment: CaptureComment): Promise<void> {
     if (!this.db) {
-      throw new Error('Database not initialized');
+      throw new Error('Database not initialized')
     }
 
     return this.executeTransaction(
       [COMMENTS_STORE],
       'readwrite',
       async transaction => {
-        const store = transaction.objectStore(COMMENTS_STORE);
+        const store = transaction.objectStore(COMMENTS_STORE)
         return new Promise<void>((resolve, reject) => {
-          const request = store.add(comment);
+          const request = store.add(comment)
           request.onsuccess = () => {
-            resolve();
-          };
+            resolve()
+          }
           request.onerror = () => {
             console.error(
               'DatabaseService: Comment add operation failed:',
               request.error,
               'for comment:',
               comment.id
-            );
-            reject(request.error);
-          };
-        });
+            )
+            reject(request.error)
+          }
+        })
       }
-    );
+    )
   }
 
   /**
@@ -478,32 +478,32 @@ export class DatabaseService implements StorageInterface {
     updates: Partial<CaptureComment>
   ): Promise<void> {
     if (!this.db) {
-      throw new Error('Database not initialized');
+      throw new Error('Database not initialized')
     }
 
     return this.executeTransaction(
       [COMMENTS_STORE],
       'readwrite',
       async transaction => {
-        const store = transaction.objectStore(COMMENTS_STORE);
+        const store = transaction.objectStore(COMMENTS_STORE)
         return new Promise<void>((resolve, reject) => {
-          const getRequest = store.get(id);
+          const getRequest = store.get(id)
           getRequest.onsuccess = () => {
-            const existingComment = getRequest.result;
+            const existingComment = getRequest.result
             if (!existingComment) {
-              reject(new Error(`Comment with ID ${id} not found`));
-              return;
+              reject(new Error(`Comment with ID ${id} not found`))
+              return
             }
 
-            const updatedComment = { ...existingComment, ...updates };
-            const putRequest = store.put(updatedComment);
-            putRequest.onsuccess = () => resolve();
-            putRequest.onerror = () => reject(putRequest.error);
-          };
-          getRequest.onerror = () => reject(getRequest.error);
-        });
+            const updatedComment = { ...existingComment, ...updates }
+            const putRequest = store.put(updatedComment)
+            putRequest.onsuccess = () => resolve()
+            putRequest.onerror = () => reject(putRequest.error)
+          }
+          getRequest.onerror = () => reject(getRequest.error)
+        })
       }
-    );
+    )
   }
 
   /**
@@ -512,21 +512,21 @@ export class DatabaseService implements StorageInterface {
    */
   async deleteComment(id: string): Promise<void> {
     if (!this.db) {
-      throw new Error('Database not initialized');
+      throw new Error('Database not initialized')
     }
 
     return this.executeTransaction(
       [COMMENTS_STORE],
       'readwrite',
       async transaction => {
-        const store = transaction.objectStore(COMMENTS_STORE);
+        const store = transaction.objectStore(COMMENTS_STORE)
         return new Promise<void>((resolve, reject) => {
-          const request = store.delete(id);
-          request.onsuccess = () => resolve();
-          request.onerror = () => reject(request.error);
-        });
+          const request = store.delete(id)
+          request.onsuccess = () => resolve()
+          request.onerror = () => reject(request.error)
+        })
       }
-    );
+    )
   }
 
   /**
@@ -535,32 +535,32 @@ export class DatabaseService implements StorageInterface {
    * @returns true if current URL matches any stored document root URL
    */
   async isBackChannelEnabled(): Promise<boolean> {
-    const currentUrl = this.getCurrentPageUrl();
+    const currentUrl = this.getCurrentPageUrl()
 
     // Fast path: check localStorage cache
     try {
-      const cachedEnabledState = localStorage.getItem(CACHE_KEYS.ENABLED_STATE);
-      const lastUrlCheck = localStorage.getItem(CACHE_KEYS.LAST_URL_CHECK);
+      const cachedEnabledState = localStorage.getItem(CACHE_KEYS.ENABLED_STATE)
+      const lastUrlCheck = localStorage.getItem(CACHE_KEYS.LAST_URL_CHECK)
 
       if (cachedEnabledState !== null && lastUrlCheck === currentUrl) {
-        return cachedEnabledState === 'true';
+        return cachedEnabledState === 'true'
       }
     } catch (error) {
-      console.warn('Failed to check cached enabled state:', error);
+      console.warn('Failed to check cached enabled state:', error)
     }
 
     // Slow path: scan database for URL matches
-    const isEnabled = await this.scanDatabaseForUrlMatch(currentUrl);
+    const isEnabled = await this.scanDatabaseForUrlMatch(currentUrl)
 
     // Cache the result
     try {
-      localStorage.setItem(CACHE_KEYS.ENABLED_STATE, isEnabled.toString());
-      localStorage.setItem(CACHE_KEYS.LAST_URL_CHECK, currentUrl);
+      localStorage.setItem(CACHE_KEYS.ENABLED_STATE, isEnabled.toString())
+      localStorage.setItem(CACHE_KEYS.LAST_URL_CHECK, currentUrl)
     } catch (error) {
-      console.warn('Failed to cache enabled state:', error);
+      console.warn('Failed to cache enabled state:', error)
     }
 
-    return isEnabled;
+    return isEnabled
   }
 
   /**
@@ -568,8 +568,8 @@ export class DatabaseService implements StorageInterface {
    */
   private async scanDatabaseForUrlMatch(currentUrl: string): Promise<boolean> {
     if (!this.db) {
-      console.warn('Database not initialized for URL scan');
-      return false;
+      console.warn('Database not initialized for URL scan')
+      return false
     }
 
     try {
@@ -577,31 +577,31 @@ export class DatabaseService implements StorageInterface {
         [METADATA_STORE],
         'readonly',
         async transaction => {
-          const store = transaction.objectStore(METADATA_STORE);
+          const store = transaction.objectStore(METADATA_STORE)
           return new Promise<DocumentMetadata[]>((resolve, reject) => {
-            const request = store.getAll();
+            const request = store.getAll()
             request.onsuccess = () => {
-              const results = request.result || [];
-              resolve(results);
-            };
-            request.onerror = () => reject(request.error);
-          });
+              const results = request.result || []
+              resolve(results)
+            }
+            request.onerror = () => reject(request.error)
+          })
         }
-      );
+      )
 
       // Check if any metadata entry has a URL root that matches the current URL
       for (const metadata of allMetadata) {
         if (this.urlPathMatches(currentUrl, metadata.documentRootUrl)) {
           // Cache the document root URL from the matching metadata
-          this.cacheDocumentUrlRoot(metadata.documentRootUrl);
-          return true;
+          this.cacheDocumentUrlRoot(metadata.documentRootUrl)
+          return true
         }
       }
 
-      return false;
+      return false
     } catch (error) {
-      console.error('Error scanning database for URL match:', error);
-      return false;
+      console.error('Error scanning database for URL match:', error)
+      return false
     }
   }
 
@@ -611,10 +611,10 @@ export class DatabaseService implements StorageInterface {
    */
   clearEnabledStateCache(): void {
     try {
-      localStorage.removeItem(CACHE_KEYS.ENABLED_STATE);
-      localStorage.removeItem(CACHE_KEYS.LAST_URL_CHECK);
+      localStorage.removeItem(CACHE_KEYS.ENABLED_STATE)
+      localStorage.removeItem(CACHE_KEYS.LAST_URL_CHECK)
     } catch (error) {
-      console.warn('Failed to clear enabled state cache:', error);
+      console.warn('Failed to clear enabled state cache:', error)
     }
   }
 
@@ -624,9 +624,9 @@ export class DatabaseService implements StorageInterface {
    */
   getCurrentPageUrl(): string {
     if (typeof window !== 'undefined' && window.location) {
-      return window.location.href;
+      return window.location.href
     }
-    return '';
+    return ''
   }
 
   /**
@@ -640,44 +640,44 @@ export class DatabaseService implements StorageInterface {
     try {
       // Handle special case for file:// protocol patterns
       if (documentRootUrl === 'file://' || documentRootUrl === 'file:///') {
-        const matches = currentUrl.startsWith('file://');
-        return matches;
+        const matches = currentUrl.startsWith('file://')
+        return matches
       }
 
       // Handle cases where documentRootUrl might be a simple path
-      let patternPath: string;
+      let patternPath: string
       if (
         documentRootUrl.startsWith('http://') ||
         documentRootUrl.startsWith('https://') ||
         documentRootUrl.startsWith('file://')
       ) {
         // Full URL - extract just the path
-        const patternUrl = new URL(documentRootUrl);
-        patternPath = patternUrl.pathname;
+        const patternUrl = new URL(documentRootUrl)
+        patternPath = patternUrl.pathname
       } else if (documentRootUrl.startsWith('/')) {
         // Already a path
-        patternPath = documentRootUrl;
+        patternPath = documentRootUrl
       } else {
         // Relative path - treat as a path component
-        patternPath = '/' + documentRootUrl;
+        patternPath = '/' + documentRootUrl
       }
 
       // Extract path from current URL
-      const currentUrlObj = new URL(currentUrl);
-      const currentPath = currentUrlObj.pathname;
+      const currentUrlObj = new URL(currentUrl)
+      const currentPath = currentUrlObj.pathname
 
       // Check if current path contains the pattern path
-      const matches = currentPath.includes(patternPath);
+      const matches = currentPath.includes(patternPath)
       console.log(
         `URL path matching: ${currentPath} includes ${patternPath} = ${matches}`
-      );
+      )
 
-      return matches;
+      return matches
     } catch (error) {
-      console.warn('URL parsing error in urlPathMatches:', error);
+      console.warn('URL parsing error in urlPathMatches:', error)
       // Fallback to simple string containment
-      const matches = currentUrl.includes(documentRootUrl);
-      return matches;
+      const matches = currentUrl.includes(documentRootUrl)
+      return matches
     }
   }
 
@@ -687,10 +687,10 @@ export class DatabaseService implements StorageInterface {
    */
   private getDocumentUrlRoot(): string {
     if (typeof window !== 'undefined' && window.location) {
-      const url = new URL(window.location.href);
-      return `${url.protocol}//${url.hostname}${url.port ? ':' + url.port : ''}${url.pathname}`;
+      const url = new URL(window.location.href)
+      return `${url.protocol}//${url.hostname}${url.port ? ':' + url.port : ''}${url.pathname}`
     }
-    return '';
+    return ''
   }
 
   /**
@@ -699,9 +699,9 @@ export class DatabaseService implements StorageInterface {
    */
   close(): void {
     if (this.db) {
-      this.db.close();
-      this.db = null;
-      this.isInitialized = false;
+      this.db.close()
+      this.db = null
+      this.isInitialized = false
     }
   }
 
@@ -709,14 +709,14 @@ export class DatabaseService implements StorageInterface {
    * Gets the current database name for external operations
    */
   getDatabaseName(): string {
-    return this.dbName;
+    return this.dbName
   }
 
   /**
    * Gets the current database version for external operations
    */
   getDatabaseVersion(): number {
-    return this.dbVersion;
+    return this.dbVersion
   }
 
   /**
@@ -729,13 +729,13 @@ export class DatabaseService implements StorageInterface {
   ): Promise<T> {
     return new Promise((resolve, reject) => {
       if (!this.db) {
-        reject(new Error('Database not initialized'));
-        return;
+        reject(new Error('Database not initialized'))
+        return
       }
 
-      const transaction = this.db.transaction(storeNames, mode);
+      const transaction = this.db.transaction(storeNames, mode)
 
-      transaction.oncomplete = () => {};
+      transaction.oncomplete = () => {}
 
       transaction.onerror = () => {
         console.error(
@@ -743,21 +743,21 @@ export class DatabaseService implements StorageInterface {
           storeNames,
           'Error:',
           transaction.error
-        );
-        reject(transaction.error);
-      };
+        )
+        reject(transaction.error)
+      }
 
       transaction.onabort = () => {
-        console.error('Transaction aborted for stores:', storeNames);
-        reject(new Error('Transaction aborted'));
-      };
+        console.error('Transaction aborted for stores:', storeNames)
+        reject(new Error('Transaction aborted'))
+      }
 
       try {
-        operation(transaction).then(resolve).catch(reject);
+        operation(transaction).then(resolve).catch(reject)
       } catch (error) {
-        console.error('Transaction execution error:', error);
-        reject(error);
+        console.error('Transaction execution error:', error)
+        reject(error)
       }
-    });
+    })
   }
 }

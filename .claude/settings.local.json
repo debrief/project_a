@@ -35,7 +35,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "yarn lint --fix"
+            "command": "yarn format"
           }
         ]
       },
