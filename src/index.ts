@@ -4,6 +4,7 @@ import {
   FakeDbStore,
   IBackChannelPlugin,
   BackChannelIconAPI,
+  CaptureComment,
 } from './types';
 import { DatabaseService } from './services/DatabaseService';
 import { seedDemoDatabaseIfNeeded } from './utils/seedDemoDatabase';
@@ -186,6 +187,11 @@ class BackChannelPlugin implements IBackChannelPlugin {
 
     // Initialize UI components after DOM is ready
     await this.initializeUI();
+
+    // Load existing comments and apply visual feedback
+    if (this.isEnabled) {
+      await this.loadExistingComments();
+    }
   }
 
   private async initializeUI(): Promise<void> {
@@ -263,6 +269,10 @@ class BackChannelPlugin implements IBackChannelPlugin {
 
         this.sidebar.addEventListener('export-comments', () => {
           this.handleExportComments();
+        });
+
+        this.sidebar.addEventListener('comment-added', (event: CustomEvent) => {
+          this.handleCommentAdded(event.detail);
         });
 
         // Add to DOM
@@ -441,6 +451,14 @@ class BackChannelPlugin implements IBackChannelPlugin {
   private handleExportComments(): void {
     // TODO: Implement CSV export logic
     console.log('Exporting comments to CSV...');
+  }
+
+  private handleCommentAdded(detail: {
+    comment: CaptureComment;
+    element: ReturnType<typeof this.getElementInfo>;
+  }): void {
+    // Add visual feedback to the commented element
+    this.addElementVisualFeedback(detail.comment, detail.element);
   }
 
   private updateIconVisibility(): void {
@@ -912,12 +930,18 @@ class BackChannelPlugin implements IBackChannelPlugin {
   private selectElement(element: HTMLElement): void {
     const elementInfo = this.getElementInfo(element);
 
-    console.log('Selected element details:', elementInfo);
-
-    // For now, just log the selection and return to sidebar
-    // In a complete implementation, this would open a comment creation dialog
-
+    // Disable element selection
     this.disableElementSelection();
+
+    // Show comment form in sidebar
+    if (
+      this.sidebar &&
+      typeof this.sidebar.showCommentFormForElement === 'function'
+    ) {
+      this.sidebar.showCommentFormForElement(elementInfo);
+    } else {
+      console.warn('Sidebar comment form not available');
+    }
   }
 
   private getElementInfo(element: HTMLElement): {
@@ -965,14 +989,14 @@ class BackChannelPlugin implements IBackChannelPlugin {
         const classes = current.className
           .trim()
           .split(/\s+/)
-          .filter(c => c.length > 0);
+          .filter(c => c.length > 0 && !c.startsWith('backchannel-')); // Exclude BackChannel classes
         if (classes.length > 0) {
           // Use the first class for specificity
           selector += `[@class='${classes[0]}']`;
         }
       }
 
-      // Calculate position among siblings with the same tag
+      // Always add position among siblings with the same tag to ensure uniqueness
       const siblings = Array.from(current.parentNode?.children || []);
       const sameTagSiblings = siblings.filter(
         sibling =>
@@ -988,7 +1012,7 @@ class BackChannelPlugin implements IBackChannelPlugin {
       current = current.parentElement;
     }
 
-    return '/' + parts.join('/');
+    return '//' + parts.join('/'); // Use // instead of / for better compatibility
   }
 
   private getElementAttributes(element: HTMLElement): Record<string, string> {
@@ -1021,7 +1045,7 @@ class BackChannelPlugin implements IBackChannelPlugin {
         const classes = current.className
           .trim()
           .split(/\s+/)
-          .filter(c => c.length > 0);
+          .filter(c => c.length > 0 && !c.startsWith('backchannel-')); // Exclude BackChannel classes
         if (classes.length > 0) {
           selector += `.${classes[0]}`;
         }
@@ -1305,6 +1329,265 @@ Keyboard shortcuts for element selection:
     );
     if (styleElement && styleElement.parentNode) {
       styleElement.parentNode.removeChild(styleElement);
+    }
+  }
+
+  private addElementVisualFeedback(
+    comment: CaptureComment,
+    elementInfo: ReturnType<typeof this.getElementInfo>
+  ): void {
+    // Safety check for elementInfo
+    if (!elementInfo || !elementInfo.xpath) {
+      console.warn('Invalid element info for visual feedback:', elementInfo);
+      return;
+    }
+
+    // Find the element by XPath
+    const element = this.findElementByXPath(elementInfo.xpath);
+    if (!element) {
+      console.warn(
+        'Could not find element for visual feedback:',
+        elementInfo.xpath
+      );
+      return;
+    }
+
+    // Add background shading
+    this.addElementBackgroundShading(element);
+
+    // Add comment badge
+    this.addCommentBadge(element, comment);
+
+    // Ensure comment visual styles are loaded
+    this.addCommentVisualStyles();
+  }
+
+  private findElementByXPath(xpath: string): HTMLElement | null {
+    try {
+      const result = document.evaluate(
+        xpath,
+        document,
+        null,
+        XPathResult.FIRST_ORDERED_NODE_TYPE,
+        null
+      );
+      return result.singleNodeValue as HTMLElement;
+    } catch (error) {
+      console.warn('Error finding element by XPath:', error);
+      return null;
+    }
+  }
+
+  private addElementBackgroundShading(element: HTMLElement): void {
+    // Add a class for subtle background shading
+    element.classList.add('backchannel-commented');
+
+    // Store the original background color if needed for restoration
+    if (!element.dataset.originalBackground) {
+      const computedStyle = window.getComputedStyle(element);
+      element.dataset.originalBackground = computedStyle.backgroundColor;
+    }
+  }
+
+  private addCommentBadge(
+    element: HTMLElement,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _comment: CaptureComment
+  ): void {
+    // Check if element already has a badge
+    const existingBadge = element.querySelector('.backchannel-comment-badge');
+    if (existingBadge) {
+      // Update badge count
+      const countElement = existingBadge.querySelector('.badge-count');
+      if (countElement) {
+        const currentCount = parseInt(countElement.textContent || '1', 10);
+        countElement.textContent = (currentCount + 1).toString();
+      }
+      return;
+    }
+
+    // Create new badge
+    const badge = document.createElement('div');
+    badge.className = 'backchannel-comment-badge';
+    badge.innerHTML = `
+      <span class="badge-icon">💬</span>
+      <span class="badge-count">1</span>
+    `;
+
+    // Add click handler to show comment details
+    badge.addEventListener('click', event => {
+      event.stopPropagation();
+      this.showCommentDetails(element);
+    });
+
+    // Position badge relative to element
+    element.style.position = 'relative';
+    element.appendChild(badge);
+  }
+
+  private async showCommentDetails(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _element: HTMLElement
+  ): Promise<void> {
+    // Get all comments for this element
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _dbService = await this.getDatabaseService();
+    // const allComments = await dbService.getComments();
+    // const _elementComments = allComments.filter(
+    //   c => c.location === this.getXPath(element)
+    // );
+
+    // Show sidebar with this element's comments highlighted
+    if (this.sidebar) {
+      this.sidebar.show();
+      // TODO: Add method to highlight specific comments in sidebar
+    }
+  }
+
+  private addCommentVisualStyles(): void {
+    // Check if styles are already injected
+    if (document.getElementById('backchannel-comment-styles')) {
+      return;
+    }
+
+    const styleElement = document.createElement('style');
+    styleElement.id = 'backchannel-comment-styles';
+    styleElement.textContent = `
+      /* Commented element background shading */
+      .backchannel-commented {
+        background-color: rgba(0, 122, 204, 0.03) !important;
+        border-left: 3px solid rgba(0, 122, 204, 0.3) !important;
+        transition: background-color 0.2s ease !important;
+      }
+      
+      .backchannel-commented:hover {
+        background-color: rgba(0, 122, 204, 0.06) !important;
+      }
+      
+      /* Comment badge styles */
+      .backchannel-comment-badge {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        background: #007acc;
+        color: white;
+        border-radius: 12px;
+        padding: 4px 8px;
+        font-size: 11px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        cursor: pointer;
+        z-index: 1000;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        transition: all 0.2s ease;
+        user-select: none;
+        min-width: 24px;
+        justify-content: center;
+      }
+      
+      .backchannel-comment-badge:hover {
+        background: #0056b3;
+        transform: scale(1.1);
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+      }
+      
+      .backchannel-comment-badge .badge-icon {
+        font-size: 10px;
+      }
+      
+      .backchannel-comment-badge .badge-count {
+        font-size: 10px;
+        font-weight: 600;
+        min-width: 12px;
+        text-align: center;
+      }
+      
+      /* Handle positioning for different element types */
+      .backchannel-commented {
+        position: relative;
+      }
+      
+      /* Ensure badges don't interfere with content */
+      .backchannel-comment-badge {
+        pointer-events: auto;
+      }
+      
+      /* Responsive adjustments */
+      @media (max-width: 768px) {
+        .backchannel-comment-badge {
+          top: -6px;
+          right: -6px;
+          padding: 3px 6px;
+          font-size: 10px;
+        }
+      }
+      
+      /* High contrast mode support */
+      @media (prefers-contrast: high) {
+        .backchannel-commented {
+          background-color: rgba(0, 122, 204, 0.1) !important;
+          border-left-width: 4px !important;
+        }
+        
+        .backchannel-comment-badge {
+          background: #004d7a;
+          border: 1px solid #ffffff;
+        }
+      }
+      
+      /* Print styles - hide badges and shading */
+      @media print {
+        .backchannel-comment-badge {
+          display: none !important;
+        }
+        
+        .backchannel-commented {
+          background-color: transparent !important;
+          border-left: none !important;
+        }
+      }
+    `;
+
+    document.head.appendChild(styleElement);
+  }
+
+  private removeCommentVisualStyles(): void {
+    const styleElement = document.getElementById('backchannel-comment-styles');
+    if (styleElement && styleElement.parentNode) {
+      styleElement.parentNode.removeChild(styleElement);
+    }
+  }
+
+  private async loadExistingComments(): Promise<void> {
+    try {
+      const dbService = await this.getDatabaseService();
+      const allComments = await dbService.getComments();
+      const currentPageComments = allComments.filter(
+        comment => comment.pageUrl === window.location.href
+      );
+
+      // Apply visual feedback for existing comments
+      for (const comment of currentPageComments) {
+        const element = this.findElementByXPath(comment.location);
+        if (element) {
+          this.addElementBackgroundShading(element);
+          this.addCommentBadge(element, comment);
+        } else {
+          console.warn(
+            'Could not find element for existing comment:',
+            comment.location
+          );
+        }
+      }
+
+      // Ensure comment visual styles are loaded
+      if (currentPageComments.length > 0) {
+        this.addCommentVisualStyles();
+      }
+    } catch (error) {
+      console.error('Failed to load existing comments:', error);
     }
   }
 
