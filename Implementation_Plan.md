@@ -114,7 +114,8 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
   2. Add validation and submission handling
   3. Connect to storage service for saving comments
   4. Implement comment badges on elements
-  - **Guiding Notes**: Form should be compact but usable, provide clear feedback on submission, badges should be visible but not intrusive
+  5. Add subtle background shading to elements with comments
+  - **Guiding Notes**: Form should be compact but usable, provide clear feedback on submission, badges should be visible but not intrusive, background shading should be subtle and not interfere with content readability
 
 ### Phase 3: Persistence & Navigation (Agent: Backend Developer)
 
@@ -126,7 +127,7 @@ Based on the project's complexity and multi-phase nature, a **directory-based Me
 - **Action Steps**:
   1. Enhance storage service to handle page reload scenarios
   2. Implement loading of existing comments on page load
-  3. Add comment badge restoration
+  3. Add comment badge and background shading restoration
   4. Optimize IndexedDB operations for performance
   - **Guiding Notes**: Use efficient querying patterns, implement caching where appropriate, handle edge cases like deleted elements
 

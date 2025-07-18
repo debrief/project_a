@@ -78,6 +78,7 @@ When in Review mode (green icon with sidebar visible):
   - Scroll to location (if on-page)
   - Navigate with timestamp anchor (if on another page)
 - Highlight markers are shown inline for feedback on current page
+- Elements with comments display both badges and subtle background shading
 - Links to other pages with unresolved feedback are decorated
 - Resolved comments are hidden by default, toggleable
 
